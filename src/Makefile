@@ -29,6 +29,7 @@ all:
 	$(MAKE) -C aibreann
 	$(MAKE) -C brannagh
 	$(MAKE) -C clodagh
+	$(MAKE) -C clodagh check
 
 clean:
 	@for d in $(DIRS) ; do \

@@ -18,7 +18,7 @@ include ../inc/default.mk
 CFLAGS+=-I. -I ../lib -I ../funcs -DBSTG_BASEDIR=\"$(BASEDIR)\"
 LDFLAGS+=-L../funcs -lfembotfuncs -L../lib -lfembot -lprop -larchive
 
-.PHONY: all clean install
+.PHONY: all clean install check
 
 all: mkpax clodagh
 
@@ -30,3 +30,6 @@ mkpax: mkpax.c
 
 clean:
 	$(RM) clodagh clodagh.core mkpax mkpax.core
+
+check: mkpax
+	$(KSH) mkpax_test.sh
