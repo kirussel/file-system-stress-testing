@@ -76,6 +76,9 @@
 
 #define lpathconf pathconf
 
+/* setproctitle(3) is BSD-only; glibc has no equivalent, so stub it out. */
+static inline void setproctitle(const char *fmt, ...) {}
+
 #ifndef __RCSID
 #define __RCSID(__not_used) struct rcsid_not_defined
 #endif
