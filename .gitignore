@@ -3,11 +3,9 @@
 *.a
 *.core
 
-# lib and funcs tests (TAP binaries and wrappers)
+# lib and funcs tests (TAP binaries)
 src/lib/*_test
-src/lib/*_test.t
 src/funcs/*_test
-src/funcs/*_test.t
 
 # funcs: generated wrappers and header
 src/funcs/**/*_bstg_funcs.c

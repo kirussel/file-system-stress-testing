@@ -36,13 +36,9 @@ libfembot.a: $(SRCS:%=%.o)
 $(SRCS:%=%_test): %_test: %_test.c
 	$(CC) $(CFLAGS) $(BSTG_TAP_CFLAGS) $^ $(LDFLAGS) $(BSTG_TAP_LDFLAGS) -o $@
 
-$(SRCS:%=%_test.t): %_test.t: %_test
-	printf "#!/bin/sh\nexec ./%s\nexit 1" $< > $@
-	chmod a+x $@
-
-check: $(SRCS:%=%_test.t)
-	$(PROVE) ./$^
+check: $(SRCS:%=%_test)
+	$(PROVE) $(^:%=./%)
 
 clean:
-	$(RM) libfembot.a $(SRCS:%=%.o) $(SRCS:%=%_test) $(SRCS:%=%_test.t)
+	$(RM) libfembot.a $(SRCS:%=%.o) $(SRCS:%=%_test)
 

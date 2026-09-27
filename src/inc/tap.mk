@@ -24,6 +24,6 @@ BSTG_TAP_CFLAGS=-I/usr/local/include
 endif
 
 ifndef PROVE
-PROVE=prove -v
+PROVE=prove -v --exec ''
 endif
 
