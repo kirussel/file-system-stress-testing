@@ -33,7 +33,7 @@ count_moved(bstg_flist_t *ps, u_int32_t n)
     int count = 0;
 
     for (x = 0; x < n; x++) {
-        if (ps->pindex[0] != x) {
+        if (ps->pindex[x] != x) {
             count++;
         }
     }
@@ -99,7 +99,11 @@ main()
     ok(bstg_flist_set(&flist, 0, 10) == 0, "nop");
     ok(bstg_flist_shuffle(&flist) == 0, "shuffle");
     ok(is_permutation(&flist, 10), "shuffle kept a permutation");
-    ok(count_moved(&flist, 10) > 8, "shuffled");
+    /*
+     * A random permutation of 10 has <= 1 fixed point only ~74% of the
+     * time, so "> 8" would be flaky; only the identity (1/10!) fails "> 0".
+     */
+    ok(count_moved(&flist, 10) > 0, "shuffled");
 
     //TODO() fix bug in bstg_flist_import() to allow reset.
     //ok(bstg_flist_import(&flist, "abc") == 1, "bad import");
