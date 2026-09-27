@@ -13,6 +13,6 @@
  * limitations under the License.
  */
 
-mkdir(bstg_pathstore_get(), 0x777);
+mkdir(bstg_pathstore_get(), 0777);
 
 __RCSID("$Id$");
