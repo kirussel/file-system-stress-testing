@@ -47,15 +47,11 @@ clean:
 	$(RM) libfembotfuncs.a fembotfuncs.h
 	$(RM) $(RAW:%=%_bstg_funcs.c)
 	$(RM) $(RAW:%=%_bstg_funcs.o)
-	$(RM) $(TSTS:%=%_test.t) $(TSTS:%=%_test)
+	$(RM) $(TSTS:%=%_test)
 
 $(TSTS:%=%_test): %_test: %_test.c
 	$(CC) $(CFLAGS) $(BSTG_TAP_CFLAGS) $^ $(LDFLAGS) $(BSTG_TAP_LDFLAGS) -o $@
 
-$(TSTS:%=%_test.t): %_test.t: %_test
-	printf "#!/bin/sh\nexec ./%s\nexit 1" $< > $@
-	chmod a+x $@
-
-check: $(TSTS:%=%_test.t)
-	$(PROVE) ./$^
+check: $(TSTS:%=%_test)
+	$(PROVE) $(^:%=./%)
 

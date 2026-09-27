@@ -16,6 +16,6 @@
 
 for exe in $@
 do
-	sh ./${exe}
+	"${exe}"
 done
 exit 0
