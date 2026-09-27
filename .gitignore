@@ -1,0 +1,37 @@
+# Objects and libraries
+*.o
+*.a
+*.core
+
+# lib and funcs tests (TAP binaries and wrappers)
+src/lib/*_test
+src/lib/*_test.t
+src/funcs/*_test
+src/funcs/*_test.t
+
+# funcs: generated wrappers and header
+src/funcs/**/*_bstg_funcs.c
+src/funcs/fembotfuncs.h
+
+# Programs
+src/aibreann/aibreann
+src/brannagh/brannagh
+src/clodagh/clodagh
+src/clodagh/mkpax
+
+# Generated per-program headers (src/clodagh/pathstore.h is tracked)
+src/aibreann/pathstore.h
+src/brannagh/pathstore.h
+
+# dsk: decompressed images and generated files
+src/dsk/*.dsk
+src/dsk/*.dsk.gz
+src/dsk/rd51.h
+src/dsk/ra81.h
+src/dsk/floppy.h
+src/dsk/true
+src/dsk/true.c
+src/dsk/true.sh
+src/dsk/md.txt
+src/aibreann/*.dsk
+src/brannagh/*.dsk
