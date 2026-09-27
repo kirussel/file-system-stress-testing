@@ -62,7 +62,7 @@ bstg_flist_shuffle(bstg_flist_t *ps)
     assert(ps->magic == BSTG_FLIST_MAGIC);
     len = ps->number;
     while (len > 1) {
-        swapindex = arc4random() % len--;
+        swapindex = arc4random_uniform(len--);
         temp = ps->pindex[len];
         ps->pindex[len] = ps->pindex[swapindex];
         ps->pindex[swapindex] = temp;

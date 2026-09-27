@@ -28,7 +28,11 @@
 #endif
 
 #ifdef linux
-#include <bsd/stdlib.h>
+#include <stdlib.h>
+#include <features.h>
+#if !defined(__GLIBC_PREREQ) || !__GLIBC_PREREQ(2, 36)
+#error "glibc >= 2.36 is required for native arc4random support without libbsd."
+#endif
 #endif
 
 #ifdef __QNXNTO__
