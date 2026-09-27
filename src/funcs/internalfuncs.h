@@ -66,6 +66,9 @@
 
 #ifdef linux
 #include <bsd/stdlib.h>
+#ifndef S_ISTXT
+#define S_ISTXT S_ISVTX
+#endif
 
 #define lpathconf pathconf
 
