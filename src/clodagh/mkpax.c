@@ -138,7 +138,7 @@ read_archive(char *filename)
             prop_object_iterator_t it;
 
             /* zero terminate the file from the archive */
-            strlcat(buf, "", 1);
+            buf[size] = '\0';
 
             ops = BSTGNULLCHECK((prop_array_internalize(buf)));
             it = BSTGNULLCHECK(prop_array_iterator(ops));
