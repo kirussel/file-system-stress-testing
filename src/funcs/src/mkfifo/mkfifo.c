@@ -13,6 +13,6 @@
  * limitations under the License.
  */
 
-mkfifo(bstg_pathstore_get(), 0x777);
+mkfifo(bstg_pathstore_get(), 0777);
 
 __RCSID("$Id$");
