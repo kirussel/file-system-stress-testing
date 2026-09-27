@@ -24,20 +24,49 @@
 
 __RCSID("$Id$");
 
+#define FLIST_SIZE 10
+
+/* count entries that are no longer in their original (identity) position */
+static int
+count_moved(bstg_flist_t *ps)
+{
+    u_int32_t x;
+    int count = 0;
+
+    for (x = 0; x < FLIST_SIZE; x++) {
+        if (ps->pindex[x] != x) {
+            count++;
+        }
+    }
+    return count;
+}
+
+/* true if pindex holds each of 0..FLIST_SIZE-1 exactly once */
+static int
+is_permutation(bstg_flist_t *ps)
+{
+    u_int32_t x;
+    int seen[FLIST_SIZE] = { 0 };
+
+    for (x = 0; x < FLIST_SIZE; x++) {
+        if (ps->pindex[x] >= FLIST_SIZE || seen[ps->pindex[x]]++) {
+            return 0;
+        }
+    }
+    return 1;
+}
 
 int
 main()
 {
-    int count = 0;
-    int x;
-    bstg_flist_t flist;
+    bstg_flist_t flist, control;
 
-    plan_tests(37);
+    plan_tests(41);
 
     ok(BSTG_FLIST_MAGIC != -1, "magic is not -1");
     ok(BSTG_FLIST_MAGIC != 0, "magic is not 0");
 
-    ok(bstg_flist_init(&flist, 10) == 0, "simple init");
+    ok(bstg_flist_init(&flist, FLIST_SIZE) == 0, "simple init");
     ok(flist.magic == BSTG_FLIST_MAGIC, "magic was set");
     ok(flist.number == 10, "verbose was set");
     ok(flist.pindex[0] == 0, "zero index");
@@ -63,14 +92,19 @@ main()
     ok(bstg_flist_get(&flist, 1) == 2, "one moved");
     ok(bstg_flist_get(&flist, 87) == 8, "now eight");
 
+    /* the shuffle check must not pass on a list that was never shuffled */
+    ok(bstg_flist_init(&control, FLIST_SIZE) == 0, "control init");
+    ok(count_moved(&control) == 0, "unshuffled list reports nothing moved");
+    ok(bstg_flist_destroy(&control) == 0, "control destroy");
+
     ok(bstg_flist_set(&flist, 0, 10) == 0, "nop");
     ok(bstg_flist_shuffle(&flist) == 0, "shuffle");
-    for (x = 0; x < 10; x++) {
-        if (flist.pindex[0] != x) {
-            count++;
-        }
-    }
-    ok(count > 8, "shuffled");
+    ok(is_permutation(&flist), "shuffle kept a permutation");
+    /*
+     * A random permutation of 10 has <= 1 fixed point only ~74% of the
+     * time, so "> 8" would be flaky; only the identity (1/10!) fails "> 0".
+     */
+    ok(count_moved(&flist) > 0, "shuffled");
 
     //TODO() fix bug in bstg_flist_import() to allow reset.
     //ok(bstg_flist_import(&flist, "abc") == 1, "bad import");
