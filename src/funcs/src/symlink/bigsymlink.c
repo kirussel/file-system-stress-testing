@@ -15,6 +15,7 @@
 
 char buf[BSTG_PATH_MAX];
 memset(buf, 'x', sizeof(buf));
+buf[sizeof(buf) - 1] = '\0';
 symlink(buf, bstg_pathstore_get());
 
 __RCSID("$Id$");
