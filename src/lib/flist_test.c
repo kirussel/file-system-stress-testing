@@ -61,7 +61,7 @@ main()
 {
     bstg_flist_t flist, control;
 
-    plan_tests(61);
+    plan_tests(65);
 
     ok(BSTG_FLIST_MAGIC != -1, "magic is not -1");
     ok(BSTG_FLIST_MAGIC != 0, "magic is not 0");
@@ -114,6 +114,10 @@ main()
     ok(bstg_flist_import(&flist, " ,: ") == 1, "separators only import");
     ok(bstg_flist_import(&flist, "-1") == 1, "negative import");
     ok(bstg_flist_import(&flist, "4294967296") == 1, "too big import");
+    ok(bstg_flist_import(&flist, "1, foo") == 1, "trailing garbage import");
+    ok(bstg_flist_import(&flist, "1, -1") == 1, "trailing negative import");
+    ok(bstg_flist_import(&flist, "1, 2x") == 1, "number suffix import");
+    ok(bstg_flist_import(&flist, "0x1") == 1, "hex import");
     ok(flist.number == FLIST_SIZE, "failed imports kept number");
     ok(flist.upper == FLIST_SIZE, "failed imports kept upper");
     ok(is_permutation(&flist), "failed imports kept the list");

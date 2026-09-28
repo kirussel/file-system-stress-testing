@@ -100,10 +100,10 @@ bstg_flist_get(bstg_flist_t *ps, u_int32_t index)
 }
 
 /*
- * Parse options as a list of numbers separated by " ,:", stopping at the
- * first thing that isn't one. Store them in pindex if store is set.
- * Return how many were found, or -1 if there are more than capacity or
- * one doesn't fit in a u_int32_t.
+ * Parse options as a list of numbers separated by " ,:". Store them in
+ * pindex if store is set. Return how many were found, or -1 if anything
+ * else is in the string, there are more than capacity, or one doesn't fit
+ * in a u_int32_t.
  */
 static long
 flist_parse(bstg_flist_t *ps, const char *options, int store)
@@ -118,10 +118,13 @@ flist_parse(bstg_flist_t *ps, const char *options, int store)
     for (;;) {
         /* skip separators */
         curr += strspn(curr, " ,:");
+        if (*curr == '\0') {
+            break;
+        }
 
         /* strtoul() would also take white space, a sign or a 0x prefix */
         if (!isdigit((unsigned char)*curr)) {
-            break;
+            return -1;
         }
         errno = 0;
         number = strtoul(curr, &p, 10);
@@ -144,8 +147,8 @@ flist_parse(bstg_flist_t *ps, const char *options, int store)
 /*
  * Replace the list with the numbers in options. The list may shrink and
  * grow again, up to the capacity it was created with. On failure (no
- * numbers, more numbers than the capacity, or a number too big) the list
- * is left unchanged.
+ * numbers, anything but numbers and separators, more numbers than the
+ * capacity, or a number too big) the list is left unchanged.
  */
 int
 bstg_flist_import(bstg_flist_t *ps, char *options)
