@@ -26,7 +26,7 @@ PAX=pax
 endif
 
 ifndef GZCAT
-GZCAT=gzcat
+GZCAT=zcat
 endif
 
 ifndef CHMOD
@@ -62,7 +62,7 @@ MKDIR=mkdir
 endif
 
 ifndef KSH
-KSH=/bin/ksh
+KSH=/usr/local/bin/ksh93
 endif
 
 ifndef BASH
