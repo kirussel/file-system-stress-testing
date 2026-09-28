@@ -24,6 +24,8 @@ fstat(fd, &sbuf);
 newids = NULL;
 if ((groupids = getgroups(0, NULL)) > 0) {
     newids = calloc(groupids, sizeof(gid_t));
+    if (newids != NULL)
+        groupids = getgroups(groupids, newids);
 }
 
 newid = -1;
