@@ -101,12 +101,13 @@ bstg_flist_get(bstg_flist_t *ps, u_int32_t index)
 
 /*
  * Parse options as a list of numbers separated by " ,:". Store them in
- * pindex if store is set. Return how many were found, or -1 if anything
- * else is in the string, there are more than capacity, or one doesn't fit
- * in a u_int32_t.
+ * pindex if store is set, and set *pcount to how many were found. Return
+ * 1 if anything else is in the string, there are more than capacity, or
+ * one doesn't fit in a u_int32_t.
  */
-static long
-flist_parse(bstg_flist_t *ps, const char *options, int store)
+static int
+flist_parse(bstg_flist_t *ps, const char *options, int store,
+    u_int32_t *pcount)
 {
     const char *curr;
     char *p;
@@ -124,24 +125,25 @@ flist_parse(bstg_flist_t *ps, const char *options, int store)
 
         /* strtoul() would also take white space, a sign or a 0x prefix */
         if (!isdigit((unsigned char)*curr)) {
-            return -1;
+            return 1;
         }
         errno = 0;
         number = strtoul(curr, &p, 10);
         if (errno == ERANGE || number > UINT32_MAX) {
-            return -1;
+            return 1;
         }
         if (count >= ps->capacity) {
-            return -1;
+            return 1;
         }
         if (store) {
-            ps->pindex[count] = number;
+            ps->pindex[count] = (u_int32_t)number;
         }
         count++;
         curr = p;
     }
 
-    return count;
+    *pcount = count;
+    return 0;
 }
 
 /*
@@ -153,14 +155,13 @@ flist_parse(bstg_flist_t *ps, const char *options, int store)
 int
 bstg_flist_import(bstg_flist_t *ps, char *options)
 {
-    long count;
+    u_int32_t count;
 
     assert(ps->magic == BSTG_FLIST_MAGIC);
-    count = flist_parse(ps, options, 0);
-    if (count <= 0) {
+    if (flist_parse(ps, options, 0, &count) || count == 0) {
         return 1;
     }
-    (void)flist_parse(ps, options, 1);
+    (void)flist_parse(ps, options, 1, &count);
     ps->lower = 0;
     ps->upper = ps->number = count;
 
