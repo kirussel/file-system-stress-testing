@@ -61,7 +61,7 @@ main()
 {
     bstg_flist_t flist, control;
 
-    plan_tests(57);
+    plan_tests(61);
 
     ok(BSTG_FLIST_MAGIC != -1, "magic is not -1");
     ok(BSTG_FLIST_MAGIC != 0, "magic is not 0");
@@ -133,10 +133,15 @@ main()
     ok(bstg_flist_get(&flist, 1) == 12, "12");
     ok(bstg_flist_get(&flist, 2) == 33, "33");
     ok(bstg_flist_get(&flist, 3) == 1, "now 1");
-    ok(bstg_flist_import(&flist, "4 5 6 7") == 1,
-        "import over the shrunk capacity");
-    ok(flist.number == 3, "shrunk number kept");
-    ok(bstg_flist_get(&flist, 1) == 12, "shrunk list kept");
+    ok(flist.number == 3, "import shrank the list");
+    ok(flist.capacity == FLIST_SIZE, "import kept the capacity");
+    ok(bstg_flist_import(&flist, "0,1,2,3,4,5,6,7,8,9,10") == 1,
+        "over capacity import after shrinking");
+    ok(flist.number == 3, "shrunk list kept its length");
+    ok(bstg_flist_import(&flist, "4 5 6 7 8 9 10 11 12 13") == 0,
+        "import can grow back to the capacity");
+    ok(flist.number == FLIST_SIZE, "list grew back");
+    ok(bstg_flist_get(&flist, 9) == 13, "grown list values");
 
     ok(bstg_flist_destroy(&flist) == 0, "simple destroy");
     ok(flist.magic != BSTG_FLIST_MAGIC, "magic was unset");

@@ -112,7 +112,8 @@ int bstg_funcs_destroy(bstg_funcs_t *);
 typedef struct bstg_flist_t {
     u_int32_t magic;
     u_int32_t *pindex;
-    u_int32_t number;
+    u_int32_t number;       /* entries in the list */
+    u_int32_t capacity;     /* entries allocated in pindex */
     u_int32_t lower;
     u_int32_t upper;
 } bstg_flist_t;

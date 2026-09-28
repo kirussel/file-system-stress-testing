@@ -34,7 +34,8 @@ bstg_flist_init(bstg_flist_t *ps, u_int32_t number)
     u_int32_t x;
 
     if ((ps->pindex =
-        calloc(ps->upper = ps->number = number, sizeof(*ps->pindex)))) {
+        calloc(number, sizeof(*ps->pindex)))) {
+        ps->upper = ps->number = ps->capacity = number;
         ps->magic = BSTG_FLIST_MAGIC;
         for (x = 0; x < number; x++) {
             ps->pindex[x] = x;
@@ -101,8 +102,8 @@ bstg_flist_get(bstg_flist_t *ps, u_int32_t index)
 /*
  * Parse options as a list of numbers separated by " ,:", stopping at the
  * first thing that isn't one. Store them in pindex if store is set.
- * Return how many were found, or -1 if there are more than number or one
- * doesn't fit in a u_int32_t.
+ * Return how many were found, or -1 if there are more than capacity or
+ * one doesn't fit in a u_int32_t.
  */
 static long
 flist_parse(bstg_flist_t *ps, const char *options, int store)
@@ -127,7 +128,7 @@ flist_parse(bstg_flist_t *ps, const char *options, int store)
         if (errno == ERANGE || number > UINT32_MAX) {
             return -1;
         }
-        if (count >= ps->number) {
+        if (count >= ps->capacity) {
             return -1;
         }
         if (store) {
@@ -141,9 +142,10 @@ flist_parse(bstg_flist_t *ps, const char *options, int store)
 }
 
 /*
- * Replace the list with the numbers in options. On failure (no numbers,
- * more numbers than the list holds, or a number too big) the list is
- * left unchanged.
+ * Replace the list with the numbers in options. The list may shrink and
+ * grow again, up to the capacity it was created with. On failure (no
+ * numbers, more numbers than the capacity, or a number too big) the list
+ * is left unchanged.
  */
 int
 bstg_flist_import(bstg_flist_t *ps, char *options)
