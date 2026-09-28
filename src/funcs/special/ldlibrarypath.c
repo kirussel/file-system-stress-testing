@@ -15,10 +15,12 @@
 
 pid_t childpid;
 char *token[] = { NULL, NULL };
-char *libpath;
+char *libpath, *libpathdup;
 
 token[0] = bstg_pathstore_get();
-libpath = dirname(strdup(bstg_pathstore_get()));
+if ((libpathdup = strdup(bstg_pathstore_get())) == NULL)
+    return;
+libpath = dirname(libpathdup);
 if ((childpid = fork()) > 0) {
     int status;
 
@@ -41,5 +43,6 @@ if ((childpid = fork()) > 0) {
     execve(token[0], token, environ);
     _exit(1);
 }
+free(libpathdup);
 
 __RCSID("$Id$");
