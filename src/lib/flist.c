@@ -16,6 +16,9 @@
 #include "fembot.h"
 
 #include <assert.h>
+#include <ctype.h>
+#include <errno.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/cdefs.h>
@@ -95,43 +98,66 @@ bstg_flist_get(bstg_flist_t *ps, u_int32_t index)
     return ps->pindex[(index % range) + ps->lower];
 }
 
+/*
+ * Parse options as a list of numbers separated by " ,:", stopping at the
+ * first thing that isn't one. Store them in pindex if store is set.
+ * Return how many were found, or -1 if there are more than number or one
+ * doesn't fit in a u_int32_t.
+ */
+static long
+flist_parse(bstg_flist_t *ps, const char *options, int store)
+{
+    const char *curr;
+    char *p;
+    unsigned long number;
+    u_int32_t count;
+
+    count = 0;
+    curr = options;
+    for (;;) {
+        /* skip separators */
+        curr += strspn(curr, " ,:");
+
+        /* strtoul() would also take white space, a sign or a 0x prefix */
+        if (!isdigit((unsigned char)*curr)) {
+            break;
+        }
+        errno = 0;
+        number = strtoul(curr, &p, 10);
+        if (errno == ERANGE || number > UINT32_MAX) {
+            return -1;
+        }
+        if (count >= ps->number) {
+            return -1;
+        }
+        if (store) {
+            ps->pindex[count] = number;
+        }
+        count++;
+        curr = p;
+    }
+
+    return count;
+}
+
+/*
+ * Replace the list with the numbers in options. On failure (no numbers,
+ * more numbers than the list holds, or a number too big) the list is
+ * left unchanged.
+ */
 int
 bstg_flist_import(bstg_flist_t *ps, char *options)
 {
-    char *curr, *p;
-    unsigned number;
-    size_t index;
-    u_int32_t count;
-    int rc;
+    long count;
 
     assert(ps->magic == BSTG_FLIST_MAGIC);
-    rc = 0;
-    ps->lower = 0;
-    count = 0;
-    curr = options;
-    while (*curr) {
-        /* skip white space */
-        index = strspn(curr, " ,:");
-        curr = &curr[index];
-
-        /* if number exists, add it to our list */
-        number = strtoul(curr, &p, 10);
-        if (p == curr) {
-            rc = (count == 0 ? 1 : 0);
-            break;
-        }
-        ps->pindex[count++] = number;
-
-        /* skip this number */
-        index = strspn(curr, "0123456789");
-        curr = &curr[index];
-
-        if (count > ps->number) {
-            rc = 1;
-            break;
-        }
+    count = flist_parse(ps, options, 0);
+    if (count <= 0) {
+        return 1;
     }
-
+    (void)flist_parse(ps, options, 1);
+    ps->lower = 0;
     ps->upper = ps->number = count;
-    return rc;
+
+    return 0;
 }
