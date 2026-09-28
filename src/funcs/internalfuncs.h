@@ -75,6 +75,7 @@
 #endif
 
 #define lpathconf pathconf
+static inline void setproctitle(const char *fmt, ...) {}
 
 #ifndef __RCSID
 #define __RCSID(__not_used) struct rcsid_not_defined

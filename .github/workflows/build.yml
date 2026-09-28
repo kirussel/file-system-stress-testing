@@ -1,0 +1,34 @@
+name: build
+
+# Compiles and runs the lib/funcs unit test suite on Linux. Deliberately
+# stops short of `make all`: the dsk/aibreann/brannagh/clodagh targets need
+# FreeBSD-only disk/mount tooling (mdconfig, newfs, BSD mount) that has no
+# Linux equivalent -- see AGENTS.md item 5.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential autoconf automake libtool
+
+      - name: Install libtap
+        run: sh contrib/tap.sh
+
+      - name: Build and test lib
+        run: |
+          make -C src/lib
+          make -C src/lib check
+
+      - name: Build and test funcs
+        run: |
+          make -C src/funcs KSH=bash
+          make -C src/funcs check KSH=bash
