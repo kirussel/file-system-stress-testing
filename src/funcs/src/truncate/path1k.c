@@ -13,6 +13,6 @@
  * limitations under the License.
  */
 
-truncate(bstg_pathstore_get(), 16384);
+truncate(bstg_pathstore_get(), 1024);
 
 __RCSID("$Id$");
