@@ -13,6 +13,6 @@
  * limitations under the License.
  */
 
-ftruncate(bstg_fdstore_get(ps), 16384);
+ftruncate(bstg_fdstore_get(ps), 1024);
 
 __RCSID("$Id$");

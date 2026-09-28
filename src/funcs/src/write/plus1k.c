@@ -18,6 +18,6 @@ struct stat sbuf;
 
 fd = bstg_fdstore_get(ps);
 fstat(fd, &sbuf);
-pwritev(fd, &pf->pattern, 1, sbuf.st_size + 16384);
+pwritev(fd, &pf->pattern, 1, sbuf.st_size + 1024);
 
 __RCSID("$Id$");
