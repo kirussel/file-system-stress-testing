@@ -16,7 +16,7 @@
 int fd;
 
 fd = bstg_fdstore_get(ps);
-lseek(fd, SEEK_SET, 0);
+lseek(fd, 0, SEEK_SET);
 write(fd, &fd, sizeof(fd));
 
 __RCSID("$Id$");
