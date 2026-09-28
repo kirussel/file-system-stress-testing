@@ -29,9 +29,8 @@ if (area != MAP_FAILED) {
     }
     signal(SIGBUS, SIG_DFL);
     signal(SIGSEGV, SIG_DFL);
-}
 
-/* Unguarded on purpose: munmap of MAP_FAILED exercises the EINVAL path. */
-munmap(area, sbuf.st_size);
+    munmap(area, sbuf.st_size);
+}
 
 __RCSID("$Id$");

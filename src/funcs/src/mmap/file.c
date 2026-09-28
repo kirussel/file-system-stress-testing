@@ -31,9 +31,8 @@ if (area != MAP_FAILED) {
     }
     signal(SIGBUS, SIG_DFL);
     signal(SIGSEGV, SIG_DFL);
-}
 
-/* Unguarded on purpose: munmap of MAP_FAILED exercises the EINVAL path. */
-munmap(area, pf->buffer.iov_len);
+    munmap(area, pf->buffer.iov_len);
+}
 
 __RCSID("$Id$");

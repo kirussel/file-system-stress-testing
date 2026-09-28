@@ -31,10 +31,9 @@ if (area != MAP_FAILED) {
     }
     signal(SIGBUS, SIG_DFL);
     signal(SIGSEGV, SIG_DFL);
-}
 
-/* Unguarded on purpose: msync/munmap of MAP_FAILED exercise the EINVAL path. */
-msync(area, 0, MS_SYNC);
-munmap(area, pf->buffer.iov_len);
+    msync(area, 0, MS_SYNC);
+    munmap(area, pf->buffer.iov_len);
+}
 
 __RCSID("$Id$");
