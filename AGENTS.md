@@ -7,16 +7,32 @@ and testing it on Linux needs a handful of workarounds.
 
 ## Setting up a development environment on Linux
 
-Run `contrib/linux.sh` first. It checks for the required tools (`cc`,
-`gmake`/GNU `make`, `prove`, a Korn shell, `git`), prints install hints for
-anything missing, and builds/installs the correct `libtap` (the original C
-TAP library by Nik Clayton, from `pozorvlak/libtap` — *not* the
+### 1. Prerequisites
+
+- A C compiler (`gcc` or `clang`)
+- GNU make (`gmake`, or `make` if it's GNU make)
+- `git`
+- `prove` (ships with Perl) to run the TAP unit tests
+- a Korn shell — the code generators under `src/funcs` (`mkfuncs.sh`,
+  `mkproto.sh`, `mktable.sh`) are written in ksh, not `/bin/sh`. Debian/
+  Ubuntu's `ksh` package installs to `/bin/ksh`; other distros (e.g. this
+  container) may only have `ksh93` elsewhere on `PATH` — see the `KSH=`
+  override below.
+
+  ```sh
+  sudo apt-get install -y gcc make git perl ksh
+  ```
+
+### 2. Build `libtap`
+
+Run `contrib/linux.sh`. It builds and installs the correct `libtap` (the
+original C TAP library by Nik Clayton, from `pozorvlak/libtap` — *not* the
 `zorgnax/libtap` fork, which has an incompatible `plan()`/`tap_plan()`/
 `ok_at_loc()` API instead of `plan_tests()`/`ok()`) if it isn't already
-present. It ends by printing the exact `make` invocation to use, with
-whichever of the overrides below apply to your machine.
+present under `/usr/local`. Override the install location with
+`PREFIX=... contrib/linux.sh` if you don't have root.
 
-### `make` variable overrides needed on Linux
+### 3. `make` variable overrides needed on Linux
 
 - **`GZCAT=zcat`** — `src/dsk/Makefile` (built earlier in `all`)
   decompresses vendored `.dsk.Z` disk images with the `$(GZCAT)` make
@@ -32,9 +48,8 @@ whichever of the overrides below apply to your machine.
   make variable, which defaults to `/bin/ksh` (`src/inc/default.mk`).
   Distros that only ship `ksh93` (e.g. under `/usr/local/bin` or
   `/usr/bin`) rather than `/bin/ksh` need this override, or `make -C
-  funcs` fails with `env: '/bin/ksh': No such file or directory`.
-  `contrib/linux.sh` detects whichever Korn shell is on `PATH` and prints
-  the right value.
+  funcs` fails with `env: '/bin/ksh': No such file or directory`. Find
+  yours with `command -v ksh93 || command -v ksh`.
 
 - **`BSTG_TAP_CFLAGS`/`BSTG_TAP_LDFLAGS`** — only needed if you installed
   `libtap` somewhere other than `/usr/local` (e.g. via `PREFIX=...
