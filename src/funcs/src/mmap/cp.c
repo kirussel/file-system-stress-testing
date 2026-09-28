@@ -21,14 +21,16 @@ sbuf.st_size = 512;
 fstat(fd = bstg_fdstore_get(ps), &sbuf);
 area = mmap(NULL, sbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
 
-if (!sigsetjmp(bstg_jmpbuf, 1)) {
-    signal(SIGBUS, bstg_signalj);
-    signal(SIGSEGV, bstg_signalj);
-    memcpy(pf->buffer.iov_base, area, min(sbuf.st_size, pf->buffer.iov_len));
-}
-signal(SIGBUS, SIG_DFL);
-signal(SIGSEGV, SIG_DFL);
+if (area != MAP_FAILED) {
+    if (!sigsetjmp(bstg_jmpbuf, 1)) {
+        signal(SIGBUS, bstg_signalj);
+        signal(SIGSEGV, bstg_signalj);
+        memcpy(pf->buffer.iov_base, area, min(sbuf.st_size, pf->buffer.iov_len));
+    }
+    signal(SIGBUS, SIG_DFL);
+    signal(SIGSEGV, SIG_DFL);
 
-munmap(area, sbuf.st_size);
+    munmap(area, sbuf.st_size);
+}
 
 __RCSID("$Id$");

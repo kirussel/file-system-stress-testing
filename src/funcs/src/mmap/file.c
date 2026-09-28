@@ -23,14 +23,16 @@ fstat(fd = bstg_fdstore_get(ps), &sbuf);
 area = mmap(NULL, pf->pattern.iov_len, PROT_READ|PROT_WRITE,
     MAP_PRIVATE, fd, 0);
 
-if (!sigsetjmp(bstg_jmpbuf, 1)) {
-    signal(SIGBUS, bstg_signalj);
-    signal(SIGSEGV, bstg_signalj);
-    memcpy(area, pf->pattern.iov_base, min(sbuf.st_size, pf->pattern.iov_len));
-}
-signal(SIGBUS, SIG_DFL);
-signal(SIGSEGV, SIG_DFL);
+if (area != MAP_FAILED) {
+    if (!sigsetjmp(bstg_jmpbuf, 1)) {
+        signal(SIGBUS, bstg_signalj);
+        signal(SIGSEGV, bstg_signalj);
+        memcpy(area, pf->pattern.iov_base, min(sbuf.st_size, pf->pattern.iov_len));
+    }
+    signal(SIGBUS, SIG_DFL);
+    signal(SIGSEGV, SIG_DFL);
 
-munmap(area, pf->buffer.iov_len);
+    munmap(area, pf->buffer.iov_len);
+}
 
 __RCSID("$Id$");
