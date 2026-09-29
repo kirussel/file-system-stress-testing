@@ -35,13 +35,14 @@ main()
 {
     char *area;
 
-    plan_tests(1);
+    plan_tests(2);
 
     count = 0;
-    area = mmap(0, 4096, PROT_READ|PROT_WRITE, MAP_ANON, -1, 0);
-    if (area != MAP_FAILED) {
-        munmap(area, 4096);
+    area = mmap(0, 4096, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0);
+    if (!ok(area != MAP_FAILED, "mmap succeeded")) {
+        return 1;
     }
+    munmap(area, 4096);
 
     signal(SIGBUS, bstg_signalj);
     signal(SIGSEGV, bstg_signalj);
