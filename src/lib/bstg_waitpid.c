@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <errno.h>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
@@ -27,6 +28,7 @@ pid_t
 bstg_waitpid(pid_t childpid, int *status, int ticks)
 {
     int count;
+    pid_t rv;
 
     /* parent should busywait for the child to terminate */
     for(count = 0; ;count++) {
@@ -34,13 +36,15 @@ bstg_waitpid(pid_t childpid, int *status, int ticks)
             kill(childpid, SIGKILL);
         }
 
-        if (waitpid(childpid, status, WNOHANG) == childpid) {
+        rv = waitpid(childpid, status, WNOHANG);
+        if (rv == childpid) {
             return childpid;
+        }
+        if (rv == -1 && errno != EINTR) {
+            return -1;
         }
 
         usleep(250000);
     }
-
-    return -1;
 }
 

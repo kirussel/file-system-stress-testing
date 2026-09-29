@@ -30,13 +30,21 @@ main()
     pid_t childpid;
     int status;
 
-    plan_tests(1);
+    plan_tests(2);
 
     if ((childpid = fork()) == 0) {
         sleep(60);
         _exit(1);
     } else if (childpid > 0) {
         ok(bstg_waitpid(childpid, &status, 4) == childpid, "waited");
+    }
+
+    /* a child that has already been reaped must not spin forever */
+    if ((childpid = fork()) == 0) {
+        _exit(0);
+    } else if (childpid > 0) {
+        waitpid(childpid, &status, 0);
+        ok(bstg_waitpid(childpid, &status, 4) == -1, "reaped child");
     }
 
     return 0;
