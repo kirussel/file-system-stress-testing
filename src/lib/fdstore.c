@@ -148,6 +148,10 @@ bstg_fdstore_set(bstg_fdstore_t *ps, int fd)
 
         if ((newd = bstg_fdstore_getraw(ps)) > 0) {
             if (dup2(fd, newd) != -1) {
+                /* newd now refers to fd's file; don't leak fd */
+                if (fd != newd) {
+                    bstg_fdstore_close(fd);
+                }
                 return newd;
             }
         }

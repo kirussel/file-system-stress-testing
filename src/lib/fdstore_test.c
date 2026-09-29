@@ -18,6 +18,8 @@
 #include "tap.h"
 
 #include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <sys/cdefs.h>
 
 #include "bstg.h"
@@ -46,8 +48,9 @@ int
 main()
 {
     bstg_fdstore_t store;
+    int fd;
 
-    plan_tests(28);
+    plan_tests(34);
 
     ok(BSTG_FDSTORE_MAGIC != -1, "magic is not -1");
     store.magic = -1;
@@ -81,6 +84,19 @@ main()
     ok(tcount == 1, "we expect 2 closes");
     ok(store.magic != BSTG_FDSTORE_MAGIC, "magic not set");
     ok(bstg_fdstore_destroy(&store) == EINVAL, "einval destroy");
+
+    /* once max > 10, set() dup2s over a stored fd and closes the original */
+    ok(bstg_fdstore_init(&store) == 0, "init for dup2 case");
+    ok(bstg_fdstore_set(&store, 12) == 12, "add 12 to set");
+    fd = open("/dev/null", O_RDONLY);
+    tcount = 0;
+    ok(bstg_fdstore_set(&store, fd) == 12, "new fd dup2ed onto 12");
+    ok(tcount == 1, "original fd was closed");
+    tcount = 0;
+    ok(bstg_fdstore_set(&store, 12) == 12, "re-add 12 to set");
+    ok(tcount == 0, "fd == newd is not closed");
+    close(fd);
+    close(12);
 
     return 0;
 }
