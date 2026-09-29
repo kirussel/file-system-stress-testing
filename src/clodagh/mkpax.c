@@ -25,8 +25,7 @@
 #include <archive.h>
 #include <archive_entry.h>
 
-/* problib is new to me */
-#include <prop/proplib.h>
+#include <cjson/cJSON.h>
 
 /* BSD rocks too, I guess */
 #include <err.h>
@@ -62,37 +61,33 @@ write_archive(char *outname)
     struct archive_entry *entry;
     size_t len;
     int i;
-    prop_array_t ops;
 
     a = archive_write_new();
     archive_write_add_filter_gzip(a);
     archive_write_set_format_pax_restricted(a);
     archive_write_open_filename(a, outname);
     entry = archive_entry_new();
-    ops = BSTGNULLCHECK(prop_array_create_with_capacity(2048));
 
     for (i = 0; i < 4096; i++) {
         int x;
         char filename[64];
-        prop_number_t op;
-        char *xml;
+        int ids[2048];
+        cJSON *ops;
+        char *json;
 
         for (x = 0; x < 2048; x++) {
             unsigned id;
-            int rc;
 
             id = bstg_flist_get(&flist, arc4random());
             assert(id >= 0);
             assert(id < NFUNCS);
 
-            op = BSTGNULLCHECK(prop_number_create_unsigned_integer(id));
-            if ((rc = prop_array_set(ops, x, op)) == 0) {
-                errx(1, "cannot add element to array: %d\n", rc);
-            }
+            ids[x] = id;
         }
 
-        xml = BSTGNULLCHECK(prop_array_externalize(ops));
-        len = strlen(xml);
+        ops = BSTGNULLCHECK(cJSON_CreateIntArray(ids, 2048));
+        json = BSTGNULLCHECK(cJSON_PrintUnformatted(ops));
+        len = strlen(json);
 
         snprintf(filename, sizeof filename, "%08X", i);
         archive_entry_set_pathname(entry, filename);
@@ -100,13 +95,12 @@ write_archive(char *outname)
         archive_entry_set_filetype(entry, AE_IFREG);
         archive_entry_set_perm(entry, 0644);
         archive_write_header(a, entry);
-        archive_write_data(a, xml, len);
+        archive_write_data(a, json, len);
         archive_entry_clear(entry);
 
-        free(xml);
+        cJSON_free(json);
+        cJSON_Delete(ops);
     }
-
-    prop_object_release(ops);
 
     archive_entry_free(entry);
     archive_write_close(a);
@@ -133,20 +127,28 @@ read_archive(char *filename)
         size = archive_entry_size(entry);
         buf = BSTGNULLCHECK(realloc(buf, size+1024));
         if (archive_read_data(a, buf, size) == size) {
-            prop_array_t ops;
-            prop_number_t op;
-            prop_object_iterator_t it;
+            cJSON *ops;
+            cJSON *op;
 
             /* zero terminate the file from the archive */
             buf[size] = '\0';
 
-            ops = BSTGNULLCHECK((prop_array_internalize(buf)));
-            it = BSTGNULLCHECK(prop_array_iterator(ops));
-            while ((op = prop_object_iterator_next(it)) != NULL) {
-                printf ("%"PRIu64"\n", prop_number_unsigned_integer_value(op));
+            ops = BSTGNULLCHECK(cJSON_Parse(buf));
+            if (!cJSON_IsArray(ops)) {
+                cJSON_Delete(ops);
+                errx(1, "malformed archive entry: not a JSON array\n");
             }
-            prop_object_iterator_release(it);
-            prop_object_release(ops);
+            cJSON_ArrayForEach(op, ops) {
+                if (!cJSON_IsNumber(op)) {
+                    cJSON_Delete(ops);
+                    errx(1, "malformed archive entry: non-numeric element\n");
+                }
+                /* valueint is parse-time clamped to INT_MIN/INT_MAX, so this
+                 * cast (unlike a double->unsigned cast) is well-defined even
+                 * for a hostile/corrupt archive */
+                printf("%u\n", (unsigned)op->valueint);
+            }
+            cJSON_Delete(ops);
         }
     }
     free(buf);

@@ -32,7 +32,7 @@
 #include <sys/wait.h>
 #include <sys/cdefs.h>
 
-#include <prop/proplib.h>
+#include <cjson/cJSON.h>
 
 __RCSID("$Id$");
 
@@ -118,22 +118,30 @@ main(int argc, char *argv[])
                     size = archive_entry_size(entry);
                     buf = BSTGNULLCHECK(realloc(buf, size+1024));
                     if (archive_read_data(a, buf, size) == size) {
-                        prop_array_t ops;
-                        prop_number_t op;
-                        prop_object_iterator_t it;
+                        cJSON *ops;
+                        cJSON *op;
                         unsigned id;
 
                         /* zero terminate the file from the archive */
                         buf[size] = '\0';
 
-                        ops = BSTGNULLCHECK((prop_array_internalize(buf)));
-                        it = BSTGNULLCHECK(prop_array_iterator(ops));
-                        while ((op = prop_object_iterator_next(it)) != NULL) {
-                            id = prop_number_unsigned_integer_value(op);
+                        ops = BSTGNULLCHECK(cJSON_Parse(buf));
+                        if (!cJSON_IsArray(ops)) {
+                            cJSON_Delete(ops);
+                            _exit(2);
+                        }
+                        cJSON_ArrayForEach(op, ops) {
+                            if (!cJSON_IsNumber(op)) {
+                                cJSON_Delete(ops);
+                                _exit(2);
+                            }
+                            /* valueint is parse-time clamped to INT_MIN/INT_MAX,
+                             * so this cast (unlike a double->unsigned cast) is
+                             * well-defined even for a hostile/corrupt archive */
+                            id = (unsigned)op->valueint;
                             (*bstg_fembot_funcs[id % NFUNCS]) (&bfs);
                         }
-                        prop_object_iterator_release(it);
-                        prop_object_release(ops);
+                        cJSON_Delete(ops);
                     }
                 }
                 archive_read_close(a);
