@@ -23,7 +23,7 @@ To use this software, you will require:
 - gnu make (gmake)
 - Nik Clayton's libtap (optional)
 - libarchive http://www.libarchive.org/ (in FreeBSD/NetBSD already)
-- proplib https://github.com/xtraeme/portableproplib (in NetBSD already)
+- libcjson https://github.com/DaveGamble/cJSON (FreeBSD: devel/libcjson)
 
 
 Setup for the host

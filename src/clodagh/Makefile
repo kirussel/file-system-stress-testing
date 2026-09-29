@@ -15,8 +15,8 @@
 
 include ../inc/default.mk
 
-CFLAGS+=-I. -I ../lib -I ../funcs -DBSTG_BASEDIR=\"$(BASEDIR)\"
-LDFLAGS+=-L../funcs -lfembotfuncs -L../lib -lfembot -lprop -larchive
+CFLAGS+=-I. -I ../lib -I ../funcs -I/usr/local/include -DBSTG_BASEDIR=\"$(BASEDIR)\"
+LDFLAGS+=-L../funcs -lfembotfuncs -L../lib -lfembot -L/usr/local/lib -lcjson -larchive
 
 .PHONY: all clean install
 

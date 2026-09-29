@@ -19,22 +19,13 @@ pkg_add -r pdksh
 cd ${DIR?}
 svn checkout http://file-system-stress-testing-framework.googlecode.com/svn/trunk/ file-system-stress-testing-framework-read-only
 
-# port and install proplib to freebsd
-cd ${DIR?}/etc
-wget http://portableproplib.googlecode.com/files/proplib-0.6.0.tar.xz
-cd ${DIR?}
-tar xf etc/proplib-0.6.0.tar.xz
-cd ${DIR?}/proplib-0.6.0/src
-patch < ../../file-system-stress-testing-framework-read-only/contrib/freebsd9_proplib-0.6.0.patch
-cd ${DIR?}/proplib-0.6.0
-sh ./configure --prefix=${DIR?}
-make CFLAGS=-D__GNUC_PREREQ=__GNUC_PREREQ__
-make install
+# install libcjson
+pkg_add -r libcjson
 
 # port fsstf to freebsd
 cd ${DIR?}/file-system-stress-testing-framework-read-only
-printf "CFLAGS:=-Wall -Werror -O0 -g2 -I${DIR?}/include\n" > src/inc/debug.mk
-printf "LDFLAGS:=-L${DIR?}/lib\n" >> src/inc/debug.mk
+printf "CFLAGS:=-Wall -Werror -O0 -g2 -I/usr/local/include\n" > src/inc/debug.mk
+printf "LDFLAGS:=-L/usr/local/lib\n" >> src/inc/debug.mk
 printf "BSTG_TAP_CFLAGS=-I../etc\n" >> src/inc/debug.mk
 printf "BSTG_TAP_LDFLAGS=-L.\n" >> src/inc/debug.mk
 printf "PROVE=../etc/prove\n" >> src/inc/debug.mk
