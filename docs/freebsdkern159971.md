@@ -18,6 +18,11 @@ used these operations from the framework library:
 * [unlink.c](https://github.com/google/file-system-stress-testing/blob/master/src/funcs/src/unlink/unlink.c)
 
 
+Note: archives are stored as JSON since the libcjson migration. Any
+`.tgz`/`.tar.gz` archive created by an older `mkpax` (XML/proplib format)
+is not readable by the current `mkpax -r` or `clodagh` -- regenerate it
+with the current `mkpax -c` before continuing.
+
 Here are the optimized instructions to reproduce
 [kern/159971]([http://www.freebsd.org/cgi/query-pr.cgi?pr=159971),
 using [Clodagh](https://github.com/google/file-system-stress-testing/tree/master/src/clodagh):
