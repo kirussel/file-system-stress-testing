@@ -31,3 +31,8 @@ the archive.  Now we can
 [create strategies](https://code.google.com/p/file-system-stress-testing-framework/wiki/FreeBSDKern159971)
 to reduce the archive to a minimal number of operations require to reproduce
 the kernel core.
+
+**Note:** archives are stored as JSON since the libcjson migration. An
+archive created by an older `mkpax` (XML/proplib format) will not be
+readable by the current `mkpax -r` or `clodagh` -- regenerate it with
+the current `mkpax -c` instead.

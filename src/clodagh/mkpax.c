@@ -133,6 +133,14 @@ read_archive(char *filename)
             /* zero terminate the file from the archive */
             buf[size] = '\0';
 
+            /* archives from mkpax builds before the libcjson migration
+             * stored entries as an XML plist; give a clear diagnosis
+             * instead of failing the JSON parse */
+            if (strncmp(buf, "<?xml", 5) == 0) {
+                errx(1, "archive entry is in the old proplib/XML format; "
+                    "regenerate it with the current mkpax\n");
+            }
+
             ops = BSTGNULLCHECK(cJSON_Parse(buf));
             if (!cJSON_IsArray(ops)) {
                 cJSON_Delete(ops);
