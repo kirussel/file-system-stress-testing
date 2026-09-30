@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Run every aibreann function against a plain directory tree instead of a
+# Run aibreann functions against a plain directory tree instead of a
 # freshly mounted disk image, so aibreann can be exercised on Linux/CI.
 #
 # This mirrors src/aibreann/check.sh, but instead of mounting a new copy of
