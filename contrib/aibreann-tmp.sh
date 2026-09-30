@@ -39,22 +39,34 @@ top=$(pwd)
 work=$(mktemp -d)
 
 # src/dsk/true{,.c,.sh} are build outputs of src/dsk/Makefile's `tree`
-# target, shared with the normal FreeBSD dsk build. Only clean up the ones
-# this run creates itself; leave any that already exist alone.
+# target, shared with the normal FreeBSD dsk build. Only clean up true and
+# true.c if this run creates them; leave any that already exist alone.
 dsktrue_new=
-for f in true true.c true.sh; do
+for f in true true.c; do
   if [ ! -e "src/dsk/$f" ] && [ ! -L "src/dsk/$f" ]; then
     dsktrue_new="$dsktrue_new src/dsk/$f"
   fi
 done
-trap 'rm -rf "$work" "$BASEDIR"
-  rm -fv -- $dsktrue_new src/aibreann/pathstore.h >&2' EXIT
+
+# true.sh bakes in $BASEDIR, and its make rule has no prerequisites, so an
+# existing one (from a /mnt dsk build, or a killed run with a different
+# BASEDIR) would be reused as is. Set it aside, regenerate it for every
+# tree, and put the original back on exit.
+if [ -e src/dsk/true.sh ] || [ -L src/dsk/true.sh ]; then
+  mv src/dsk/true.sh "$work/true.sh.saved"
+fi
+trap 'rm -fv -- $dsktrue_new src/dsk/true.sh src/aibreann/pathstore.h >&2
+  if [ -e "$work/true.sh.saved" ] || [ -L "$work/true.sh.saved" ]; then
+    mv -v "$work/true.sh.saved" src/dsk/true.sh >&2
+  fi
+  rm -rf "$work" "$BASEDIR"' EXIT
 
 mktree()
 {
   rm -rf "$BASEDIR"
   mkdir -p "$BASEDIR"
   chmod 0777 "$BASEDIR"
+  rm -f src/dsk/true.sh
   "$MAKE" -s -C src/dsk tree BASEDIR="$BASEDIR" DSK_TREE="$DSK" UCHG= \
       EMPTYSYMLINK= >&2
 }
