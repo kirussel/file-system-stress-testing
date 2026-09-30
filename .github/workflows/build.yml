@@ -1,10 +1,11 @@
 name: build
 
 # Compiles and runs the lib/funcs unit test suite on Linux, builds
-# clodagh/mkpax, and round-trips a mkpax archive. Deliberately stops short
-# of `make all`: the dsk target needs FreeBSD-only disk/mount tooling
-# (mdconfig, newfs, BSD mount) that has no Linux equivalent, and
-# aibreann/brannagh need the pathstore.h that dsk generates.
+# clodagh/mkpax/aibreann/brannagh, and round-trips a mkpax archive.
+# Deliberately stops short of `make all`: the dsk target needs FreeBSD-only
+# disk/mount tooling (mdconfig, newfs, BSD mount) that has no Linux
+# equivalent. aibreann/brannagh normally get their pathstore.h from dsk, so
+# CI compiles them against src/clodagh/pathstore.h instead.
 
 on:
   push:
@@ -43,6 +44,14 @@ jobs:
         run: |
           ./mkpax -c -f "$RUNNER_TEMP/ops.tgz"
           ./mkpax -r -f "$RUNNER_TEMP/ops.tgz" > /dev/null
+
+      # -o pathstore.h keeps make from regenerating it via the dsk target.
+      - name: Build aibreann and brannagh
+        run: |
+          for p in aibreann brannagh; do
+            cp src/clodagh/pathstore.h src/$p/pathstore.h
+            make -C src/$p $p -o pathstore.h KSH=bash
+          done
 
   lint:
     runs-on: ubuntu-latest
