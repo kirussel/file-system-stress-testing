@@ -42,3 +42,5 @@ check: $(SRCS:%=%_test)
 clean:
 	$(RM) libfembot.a $(SRCS:%=%.o) $(SRCS:%=%_test)
 
+LINT_SH=
+include ../inc/lint.mk

@@ -87,3 +87,5 @@ clean:
 	$(RM) true true.c true.sh md.txt
 	$(RM) $(RAWDSK:%=%.h) $(DSK:%=%.gz) $(DSK)
 
+LINT_SH=mkdsk.sh umdsk.sh
+include ../inc/lint.mk

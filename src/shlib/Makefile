@@ -19,3 +19,6 @@ include ../inc/default.mk
 
 all clean:
 
+LINT_SH=bsd.lib
+SHELLCHECK_FLAGS+=--shell=ksh
+include ../inc/lint.mk

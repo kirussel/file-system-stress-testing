@@ -51,3 +51,6 @@ check:
 
 clean:
 	$(RM) brannagh pathstore.h $(RSK).dsk brannagh.core
+
+LINT_SH=check.sh
+include ../inc/lint.mk
