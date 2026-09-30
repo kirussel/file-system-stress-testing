@@ -1,0 +1,70 @@
+#!/bin/sh
+#
+# Run every aibreann function against a plain directory tree instead of a
+# freshly mounted disk image, so aibreann can be exercised on Linux/CI.
+#
+# This mirrors src/aibreann/check.sh, but instead of mounting a new copy of
+# the rd51 image for each function, it rebuilds under $BASEDIR the same tree
+# src/dsk/Makefile lays out on that image (minus the FreeBSD-only bits: no
+# chflags uchg, and no empty symlink, which Linux rejects).
+#
+# src/lib and src/funcs must already be built with the same BASEDIR, since
+# BSTG_BASEDIR is compiled into them too. Run from the top of the repo:
+#
+#   BASEDIR=/tmp/aibreann sh contrib/aibreann-tmp.sh
+#
+set -e
+
+: "${BASEDIR:?set BASEDIR to the directory to run aibreann in}"
+KSH=${KSH:-bash}
+DSK=rd51
+DIR111=$BASEDIR/111
+ONEMG=1048576
+
+top=$(pwd)
+work=$(mktemp -d)
+trap 'rm -rf "$work" "$BASEDIR"; rm -fv src/aibreann/pathstore.h' EXIT
+
+printf "int main() { return 0; }\n" > "$work/true.c"
+cc -o "$work/true" "$work/true.c"
+printf "#!%s\n" "$DIR111/true" > "$work/true.sh"
+
+mktree()
+{
+  rm -rf "$BASEDIR"
+  mkdir -p "$DIR111"
+  chmod 0777 "$BASEDIR" "$DIR111"
+  for d in 222 333 444 555 666 777 888 999 aaa bbb ccc ddd eee fff; do
+    mkdir -m 0777 "$BASEDIR/$d"
+  done
+  install -c -s -m 0777 "$work/true" "$BASEDIR"
+  install -c -s -m 0777 "$work/true" "$DIR111"
+  install -c -s -m 0777 "$work/true" "$DIR111/true2"
+  install -c -m 0777 "$work/true.sh" "$DIR111"
+  install -c -m 0777 "src/dsk/$DSK.dsk.Z" "$DIR111"
+  mkdir -m 0777 "$DIR111/adir"
+  mkfifo -m 0777 "$DIR111/afifo"
+  truncate -s $ONEMG "$DIR111/ahole"
+  chmod 0777 "$DIR111/ahole"
+  install -c -s -m 0777 "$work/true" "$DIR111/true.truncate"
+  truncate -s 8 "$DIR111/true.truncate"
+  truncate -s $ONEMG "$DIR111/true.truncate"
+  install -c -m 0777 "$work/true.sh" "$DIR111/true.sh.truncate"
+  truncate -s 8 "$DIR111/true.sh.truncate"
+  truncate -s $ONEMG "$DIR111/true.sh.truncate"
+  (umask 0; ln -s a "$DIR111/b"; ln -s b "$DIR111/c"; ln -s c "$DIR111/a")
+}
+
+# Same listing src/dsk/Makefile generates for rd51.h.
+mktree
+find "$DIR111"/* | xargs -n 1 printf "  \"%s\",\n" > src/aibreann/pathstore.h
+make -C src/aibreann aibreann -o pathstore.h KSH="$KSH"
+
+n=$(src/aibreann/aibreann -n)
+i=0
+while [ $i -lt $n ]; do
+  mktree
+  printf "count=%d\n" $i
+  (cd "$BASEDIR" && timeout 60 "$top/src/aibreann/aibreann" -f $i)
+  i=$((i + 1))
+done
