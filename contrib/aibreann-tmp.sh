@@ -5,8 +5,9 @@
 #
 # This mirrors src/aibreann/check.sh, but instead of mounting a new copy of
 # the rd51 image for each function, it rebuilds under $BASEDIR the same tree
-# src/dsk/Makefile lays out on that image (minus the FreeBSD-only bits: no
-# chflags uchg, and no empty symlink, which Linux rejects).
+# src/dsk/Makefile's `tree` target lays out on that image, with the
+# FreeBSD-only bits turned off: no chflags uchg, and no empty symlink,
+# which Linux rejects.
 #
 # src/lib and src/funcs must already be built with the same BASEDIR, since
 # BSTG_BASEDIR is compiled into them too. Run from the top of the repo:
@@ -33,46 +34,29 @@ if [ -z "$MAKE" ]; then
   fi
 fi
 DSK=rd51
-DIR111=$BASEDIR/111
-ONEMG=1048576
 
 top=$(pwd)
 work=$(mktemp -d)
-trap 'rm -rf "$work" "$BASEDIR"; rm -fv src/aibreann/pathstore.h >&2' EXIT
-
-printf "int main() { return 0; }\n" > "$work/true.c"
-cc -o "$work/true" "$work/true.c"
-printf "#!%s\n" "$DIR111/true" > "$work/true.sh"
+trap 'rm -rf "$work" "$BASEDIR"
+  rm -fv src/dsk/true src/dsk/true.c src/dsk/true.sh src/aibreann/pathstore.h \
+      >&2' EXIT
 
 mktree()
 {
   rm -rf "$BASEDIR"
-  mkdir -p "$DIR111"
-  chmod 0777 "$BASEDIR" "$DIR111"
-  for d in 222 333 444 555 666 777 888 999 aaa bbb ccc ddd eee fff; do
-    mkdir -m 0777 "$BASEDIR/$d"
-  done
-  install -c -s -m 0777 "$work/true" "$BASEDIR"
-  install -c -s -m 0777 "$work/true" "$DIR111"
-  install -c -s -m 0777 "$work/true" "$DIR111/true2"
-  install -c -m 0777 "$work/true.sh" "$DIR111"
-  install -c -m 0777 "src/dsk/$DSK.dsk.Z" "$DIR111"
-  mkdir -m 0777 "$DIR111/adir"
-  mkfifo -m 0777 "$DIR111/afifo"
-  truncate -s $ONEMG "$DIR111/ahole"
-  chmod 0777 "$DIR111/ahole"
-  install -c -s -m 0777 "$work/true" "$DIR111/true.truncate"
-  truncate -s 8 "$DIR111/true.truncate"
-  truncate -s $ONEMG "$DIR111/true.truncate"
-  install -c -m 0777 "$work/true.sh" "$DIR111/true.sh.truncate"
-  truncate -s 8 "$DIR111/true.sh.truncate"
-  truncate -s $ONEMG "$DIR111/true.sh.truncate"
-  (umask 0; ln -s a "$DIR111/b"; ln -s b "$DIR111/c"; ln -s c "$DIR111/a")
+  mkdir -p "$BASEDIR"
+  chmod 0777 "$BASEDIR"
+  # true.sh bakes in $BASEDIR; force it to regenerate in case a previous
+  # run with a different BASEDIR got killed before its cleanup trap ran.
+  rm -f src/dsk/true.sh
+  "$MAKE" -s -C src/dsk tree BASEDIR="$BASEDIR" DSK_TREE="$DSK" UCHG= \
+      EMPTYSYMLINK= >&2
 }
 
-# Same listing src/dsk/Makefile generates for rd51.h.
+# Same listing src/dsk/Makefile's pathstore target generates for rd51.h.
 mktree
-find "$DIR111"/* | xargs -n 1 printf "  \"%s\",\n" > src/aibreann/pathstore.h
+"$MAKE" -s -C src/dsk pathstore BASEDIR="$BASEDIR" \
+    PATHSTORE="$top/src/aibreann/pathstore.h" >&2
 "$MAKE" -C src/aibreann aibreann -o pathstore.h KSH="$KSH" >&2
 
 # Functions that leave the tree unchanged when run on their own (they only
