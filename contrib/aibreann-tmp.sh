@@ -37,18 +37,24 @@ DSK=rd51
 
 top=$(pwd)
 work=$(mktemp -d)
+
+# src/dsk/true{,.c,.sh} are build outputs of src/dsk/Makefile's `tree`
+# target, shared with the normal FreeBSD dsk build. Only clean up the ones
+# this run creates itself; leave any that already exist alone.
+dsktrue_new=
+for f in true true.c true.sh; do
+  if [ ! -e "src/dsk/$f" ] && [ ! -L "src/dsk/$f" ]; then
+    dsktrue_new="$dsktrue_new src/dsk/$f"
+  fi
+done
 trap 'rm -rf "$work" "$BASEDIR"
-  rm -fv src/dsk/true src/dsk/true.c src/dsk/true.sh src/aibreann/pathstore.h \
-      >&2' EXIT
+  rm -fv -- $dsktrue_new src/aibreann/pathstore.h >&2' EXIT
 
 mktree()
 {
   rm -rf "$BASEDIR"
   mkdir -p "$BASEDIR"
   chmod 0777 "$BASEDIR"
-  # true.sh bakes in $BASEDIR; force it to regenerate in case a previous
-  # run with a different BASEDIR got killed before its cleanup trap ran.
-  rm -f src/dsk/true.sh
   "$MAKE" -s -C src/dsk tree BASEDIR="$BASEDIR" DSK_TREE="$DSK" UCHG= \
       EMPTYSYMLINK= >&2
 }
