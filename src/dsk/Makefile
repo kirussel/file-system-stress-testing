@@ -18,10 +18,21 @@ include ../inc/default.mk
 DIR111=$(BASEDIR)/111
 ONEMG=1048576
 
+# FreeBSD-only bits of the tree, on by default: the `uchg` flag on the two
+# copies of true, and the empty symlink Linux rejects. Callers that build
+# the tree under a plain directory (no FreeBSD/UFS underneath, e.g.
+# contrib/aibreann-tmp.sh) pass UCHG= and EMPTYSYMLINK= to skip them.
+UCHG?=-f uchg
+EMPTYSYMLINK?=yes
+
+# rd51/ra81/floppy.dsk.Z is installed into 111/ as tree content; DSK_TREE
+# picks which one. Defaults to rd51, the one aibreann-tmp.sh also uses.
+DSK_TREE?=rd51
+
 DSK=rd51.dsk ra81.dsk floppy.dsk
 RAWDSK=$(addsuffix  ,$(basename $(DSK)))
 
-.PHONY: all clean install
+.PHONY: all clean install tree pathstore
 
 all: true $(DSK:%=%) $(DSK:%=%.gz)
 
@@ -30,7 +41,7 @@ true.c:
 
 true.sh:
 	printf "#!%s\n" $(DIR111)/true > $@
-	
+
 true: true.c
 
 $(DSK): % : %.Z
@@ -39,12 +50,12 @@ $(DSK): % : %.Z
 $(RAWDSK:%=%.dsk.gz): %.dsk.gz: %.dsk %.h
 	gzip -1 < $< > $@
 
-# TODO(k) cleanup the BASEDIR creation
-
-$(RAWDSK:%=%.h): %.h: %.dsk true true.sh
-	$(SETENV) GZCAT=$(GZCAT) SUDO=$(SUDO) MNT=$(BASEDIR) $(KSH) ./mkdsk.sh $^
-	$(SUDO) chown $(USER) $(BASEDIR)
-	$(MKDIR) $(DIR111)
+# Populate $(BASEDIR) with the tree aibreann exercises: dirs 111 through
+# fff, assorted regular/special files under 111, and a symlink chain.
+# Shared by the %.h recipe below (mounted disk image) and
+# contrib/aibreann-tmp.sh (plain directory tree).
+tree: true true.sh
+	$(MKDIR) -p $(DIR111)
 	chmod 0777 $(DIR111)
 	$(MKDIR) -m 0777 $(BASEDIR)/222
 	$(MKDIR) -m 0777 $(BASEDIR)/333
@@ -60,11 +71,11 @@ $(RAWDSK:%=%.h): %.h: %.dsk true true.sh
 	$(MKDIR) -m 0777 $(BASEDIR)/ddd
 	$(MKDIR) -m 0777 $(BASEDIR)/eee
 	$(MKDIR) -m 0777 $(BASEDIR)/fff
-	$(INSTALL) -c -s -f uchg -m 0777 true $(DIR111)/..
-	$(INSTALL) -c -s -f uchg -m 0777 true $(DIR111)
+	$(INSTALL) -c -s $(UCHG) -m 0777 true $(DIR111)/..
+	$(INSTALL) -c -s $(UCHG) -m 0777 true $(DIR111)
 	$(INSTALL) -c -s -m 0777 true $(DIR111)/true2
 	$(INSTALL) -c -m 0777 true.sh $(DIR111)
-	$(INSTALL) -c -m 0777 $(<).Z $(DIR111)
+	$(INSTALL) -c -m 0777 $(DSK_TREE).dsk.Z $(DIR111)
 	$(MKDIR) $(DIR111)/adir
 	chmod 0777 $(DIR111)/adir
 	mkfifo -m 0777 $(DIR111)/afifo
@@ -76,11 +87,23 @@ $(RAWDSK:%=%.h): %.h: %.dsk true true.sh
 	$(INSTALL) -c -m 0777 true.sh $(DIR111)/true.sh.truncate
 	truncate -s 8 $(DIR111)/true.sh.truncate
 	truncate -s $(ONEMG) $(DIR111)/true.sh.truncate
-	umask 0 ; ln -s "" $(DIR111)/symlinkempty
+	$(if $(EMPTYSYMLINK),umask 0 ; ln -s "" $(DIR111)/symlinkempty)
 	umask 0 ; ln -s "a" $(DIR111)/b
 	umask 0 ; ln -s "b" $(DIR111)/c
 	umask 0 ; ln -s "c" $(DIR111)/a
-	find $(DIR111)/* | xargs -n 1 printf "  \"%s\",\n" > $@
+
+# Same listing the %.h recipe below generates. PATHSTORE names the output
+# file; contrib/aibreann-tmp.sh points it at src/aibreann/pathstore.h.
+pathstore:
+	find $(DIR111)/* | xargs -n 1 printf "  \"%s\",\n" > "$(PATHSTORE)"
+
+# TODO(k) cleanup the BASEDIR creation
+
+$(RAWDSK:%=%.h): %.h: %.dsk true true.sh
+	$(SETENV) GZCAT=$(GZCAT) SUDO=$(SUDO) MNT=$(BASEDIR) $(KSH) ./mkdsk.sh $^
+	$(SUDO) chown $(USER) $(BASEDIR)
+	$(MAKE) tree DSK_TREE=$*
+	$(MAKE) pathstore PATHSTORE=$@
 	$(SETENV) GZCAT=$(GZCAT) SUDO=$(SUDO) MNT=$(BASEDIR) $(KSH) ./umdsk.sh
 
 clean:

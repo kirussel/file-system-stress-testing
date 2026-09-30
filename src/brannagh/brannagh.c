@@ -26,6 +26,8 @@
 #include <sys/wait.h>
 #include <sys/cdefs.h>
 
+#include "bstg.h"
+
 __RCSID("$Id$");
 
 #define NPATHS ((sizeof(bstg_pathstore)/sizeof(bstg_pathstore[0])))
