@@ -79,7 +79,6 @@ write_archive(char *outname)
             unsigned id;
 
             id = bstg_flist_get(&flist, arc4random());
-            assert(id >= 0);
             assert(id < NFUNCS);
 
             ids[x] = id;
@@ -119,7 +118,7 @@ read_archive(char *filename)
     archive_read_support_format_all(a);
     archive_read_support_filter_all(a);
     if (archive_read_open_filename(a, filename, 10240)) {
-        errx(1, "cannot read: %s\n", archive_error_string(a));
+        errx(1, "cannot read: %s", archive_error_string(a));
     }
     while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
         size_t size;
@@ -138,18 +137,18 @@ read_archive(char *filename)
              * instead of failing the JSON parse */
             if (strncmp(buf, "<?xml", 5) == 0) {
                 errx(1, "archive entry is in the old proplib/XML format; "
-                    "regenerate it with the current mkpax\n");
+                    "regenerate it with the current mkpax");
             }
 
             ops = BSTGNULLCHECK(cJSON_Parse(buf));
             if (!cJSON_IsArray(ops)) {
                 cJSON_Delete(ops);
-                errx(1, "malformed archive entry: not a JSON array\n");
+                errx(1, "malformed archive entry: not a JSON array");
             }
             cJSON_ArrayForEach(op, ops) {
                 if (!cJSON_IsNumber(op)) {
                     cJSON_Delete(ops);
-                    errx(1, "malformed archive entry: non-numeric element\n");
+                    errx(1, "malformed archive entry: non-numeric element");
                 }
                 /* valueint is parse-time clamped to INT_MIN/INT_MAX, so this
                  * cast (unlike a double->unsigned cast) is well-defined even
@@ -178,7 +177,8 @@ int
 main(int argc, char **argv)
 {
     int rc;
-    unsigned options, optJ;
+    unsigned options;
+    unsigned long optJ;
     char *farg, *optS;
     u_int32_t base;
 
@@ -241,6 +241,11 @@ main(int argc, char **argv)
         assert(rc == 0);
     }
 
+    /* every shard needs at least one function, and J=0 would divide by 0 */
+    if ((optJ == 0) || (optJ > flist.number)) {
+        errx(1, "-J must be between 1 and %u", flist.number);
+    }
+
     /* shuffle the current ordering */
     rc = bstg_flist_shuffle(&flist);
     assert(rc == 0);
@@ -261,7 +266,7 @@ main(int argc, char **argv)
         /* setup the shard boundaries with our set */
         rc = bstg_flist_set(&flist, base, base + count);
         if (rc) {
-            errx(1, "%u %u %u\n", base, count, base+count);
+            errx(1, "%u %u %u", base, count, base+count);
         }
 
         if (optJ == 1) {
