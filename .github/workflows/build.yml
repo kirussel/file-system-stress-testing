@@ -49,9 +49,9 @@ jobs:
       # The EXIT trap removes the borrowed headers even if a build fails.
       - name: Build aibreann and brannagh
         run: |
-          trap 'rm -f src/aibreann/pathstore.h src/brannagh/pathstore.h' EXIT
+          trap 'rm -fv src/aibreann/pathstore.h src/brannagh/pathstore.h' EXIT
           for p in aibreann brannagh; do
-            cp src/clodagh/pathstore.h src/$p/pathstore.h
+            cp -v src/clodagh/pathstore.h src/$p/pathstore.h
             make -C src/$p $p -o pathstore.h KSH=bash
           done
 
