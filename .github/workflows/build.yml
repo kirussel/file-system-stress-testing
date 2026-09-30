@@ -32,3 +32,11 @@ jobs:
         run: |
           make -C src/funcs KSH=bash
           make -C src/funcs check KSH=bash
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run shellcheck
+        run: make -C src lint
