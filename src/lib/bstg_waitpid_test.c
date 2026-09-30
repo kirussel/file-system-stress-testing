@@ -18,6 +18,8 @@
 #include "tap.h"
 
 #include <sys/cdefs.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "bstg.h"
 
