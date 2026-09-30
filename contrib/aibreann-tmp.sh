@@ -24,9 +24,9 @@ set -e
 KSH=${KSH:-bash}
 if [ -z "$MAKE" ]; then
   if command -v gmake > /dev/null 2>&1; then
-    MAKE=gmake
+    MAKE="gmake"
   else
-    MAKE=make
+    MAKE="make"
   fi
 fi
 DSK=rd51
@@ -90,7 +90,7 @@ echo "1..$((n + 1))"
 i=0
 failed=0
 mutated=0
-while [ $i -lt $n ]; do
+while [ $i -lt "$n" ]; do
   mktree
   snap > "$work/before"
   rc=0
