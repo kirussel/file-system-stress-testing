@@ -15,10 +15,20 @@
 #
 # Output is TAP on stdout; build and aibreann output go to stderr.
 #
+# The build needs GNU make: set MAKE to pick one (e.g. MAKE=gmake),
+# otherwise gmake is used if installed, else make.
+#
 set -e
 
 : "${BASEDIR:?set BASEDIR to the directory to run aibreann in}"
 KSH=${KSH:-bash}
+if [ -z "$MAKE" ]; then
+  if command -v gmake > /dev/null 2>&1; then
+    MAKE=gmake
+  else
+    MAKE=make
+  fi
+fi
 DSK=rd51
 DIR111=$BASEDIR/111
 ONEMG=1048576
@@ -60,7 +70,7 @@ mktree()
 # Same listing src/dsk/Makefile generates for rd51.h.
 mktree
 find "$DIR111"/* | xargs -n 1 printf "  \"%s\",\n" > src/aibreann/pathstore.h
-make -C src/aibreann aibreann -o pathstore.h KSH="$KSH" >&2
+"$MAKE" -C src/aibreann aibreann -o pathstore.h KSH="$KSH" >&2
 
 # Everything in the tree that a function could change: type, mode, size,
 # mtime, link target and file contents.
