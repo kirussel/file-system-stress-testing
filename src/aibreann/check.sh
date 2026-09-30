@@ -28,46 +28,41 @@ aibreann_check()
   acount=${2}
   dsk=${1}
   # we expect this file to exist
-  if [ ! -s ${dsk} ] ; then
+  if [ ! -s "${dsk}" ] ; then
     return 1
   fi
 
-  ${GZCAT} < ${dsk} > rd51.dsk
-  if [ ${?} -ne 0 ] ; then
+  if ! ${GZCAT} < "${dsk}" > rd51.dsk ; then
     return 1
   fi
   dsk=rd51.dsk
 
   # config file to be a md(4) disk
-  md="$(bstg_dskvnconfig ${dsk})"
+  md="$(bstg_dskvnconfig "${dsk}")"
   if [ -z "${md}" ] ; then
     return 1
   fi
 
   # mount this filesystem
-  bstg_bsdmount /dev/${md} ${MNT} ${dsk}
-  if [ ${?} -ne 0 ] ; then
-    ${SUDO} bstg_undskvnconfig ${md}
+  if ! bstg_bsdmount "/dev/${md}" "${MNT}" "${dsk}" ; then
+    ${SUDO} bstg_undskvnconfig "${md}"
     return 1
   fi
 
-  printf "count=%d\n" ${acount}
-  ./aibreann -f ${acount}
+  printf "count=%d\n" "${acount}"
+  ./aibreann -f "${acount}"
 
   # umount this new filesystem
-  ${SUDO} umount ${MNT}
-  if [ ${?} -ne 0 ] ; then
+  if ! ${SUDO} umount "${MNT}" ; then
     return 1
   fi
 
   # do an fsck
-  bstg_bsdfsck ${md}
-  if [ ${?} -ne 0 ] ; then
+  if ! bstg_bsdfsck "${md}" ; then
     return 1
   fi
 
-  bstg_undskvnconfig ${md}
-  if [ ${?} -ne 0 ] ; then
+  if ! bstg_undskvnconfig "${md}" ; then
     return 1
   fi
 
@@ -90,11 +85,10 @@ aibreann_checkall()
     return 1
   fi
 
-  while [ ${acount} -lt ${funcs} ]
+  while [ ${acount} -lt "${funcs}" ]
   do
     dsk=${1}
-    aibreann_check ${dsk} ${acount}
-    if [ ${?} -ne 0 ] ; then
+    if ! aibreann_check "${dsk}" ${acount} ; then
       return 1
     fi
 

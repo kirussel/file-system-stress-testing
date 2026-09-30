@@ -26,30 +26,28 @@ aibreann_newfs()
 
   dsk=${1}
   # we expect this file to exist
-  if [ ! -s ${dsk} ] ; then
+  if [ ! -s "${dsk}" ] ; then
     return 1
   fi
 
   # config file to be a md(4) disk
-  md="$(bstg_dskvnconfig ${dsk})"
+  md="$(bstg_dskvnconfig "${dsk}")"
   if [ -z "${md}" ] ; then
     return 1
   fi
 
   # save for later
-  printf "%s\n" ${md} > md.txt
+  printf "%s\n" "${md}" > md.txt
 
   # format the filesystem 
-  bstg_newfs ${md} ${dsk}
-  if [ ${?} -ne 0 ] ; then
-    bstg_undskvnconfig ${md}
+  if ! bstg_newfs "${md}" "${dsk}" ; then
+    bstg_undskvnconfig "${md}"
     return 1
   fi
 
   # mount this new filesystem
-  bstg_bsdmount /dev/${md} ${MNT} ${dsk}
-  if [ ${?} -ne 0 ] ; then
-    bstg_undskvnconfig ${md}
+  if ! bstg_bsdmount "/dev/${md}" "${MNT}" "${dsk}" ; then
+    bstg_undskvnconfig "${md}"
     return 1
   fi
 

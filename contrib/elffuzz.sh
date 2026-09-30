@@ -49,9 +49,9 @@ do
   #
   let acount=acount+1
   DIRNAME=f${acount}s"$(date +'%s')"
-  echo $DIRNAME
-  mkdir $DIRNAME
-  cd $DIRNAME
+  echo "$DIRNAME"
+  mkdir "$DIRNAME"
+  cd "$DIRNAME" || exit
 
   #
   # setup this ELF image
@@ -76,5 +76,5 @@ do
   #
   # kernel did not crash, try again
   #
-  rm -rf $DIRNAME
+  rm -rf "$DIRNAME"
 done

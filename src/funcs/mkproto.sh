@@ -15,9 +15,9 @@
 #
 
 printf "\n"
-for pname in ${@}
+for pname in "$@"
 do
-	FUNC="$(echo ${pname} | sed 's/\//_/g' | sed 's/[.]c//g')"
-	printf "void %s(bstg_funcs_t *);\n" ${FUNC}
+	FUNC="$(echo "${pname}" | sed 's/\//_/g' | sed 's/[.]c//g')"
+	printf "void %s(bstg_funcs_t *);\n" "${FUNC}"
 done
 printf "\n"

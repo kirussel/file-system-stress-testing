@@ -27,45 +27,40 @@ brannagh_check()
 
   dsk=${1}
   # we expect this file to exist
-  if [ ! -s ${dsk} ] ; then
+  if [ ! -s "${dsk}" ] ; then
     return 1
   fi
 
-  ${GZCAT} < ${dsk} > ${dsk%%.gz}
-  if [ ${?} -ne 0 ] ; then
+  if ! ${GZCAT} < "${dsk}" > "${dsk%%.gz}" ; then
     return 1
   fi
   dsk=${dsk%%.gz}
 
   # config file to be a md(4) disk
-  md="$(bstg_dskvnconfig ${dsk})"
+  md="$(bstg_dskvnconfig "${dsk}")"
   if [ -z "${md}" ] ; then
     return 1
   fi
 
   # mount this filesystem
-  bstg_bsdmount /dev/${md} ${MNT} ${dsk}
-  if [ ${?} -ne 0 ] ; then
-    bstg_undskvnconfig ${md}
+  if ! bstg_bsdmount "/dev/${md}" "${MNT}" "${dsk}" ; then
+    bstg_undskvnconfig "${md}"
     return 1
   fi
 
   ./brannagh
 
   # umount this new filesystem
-  ${SUDO} umount ${MNT}
-  if [ ${?} -ne 0 ] ; then
+  if ! ${SUDO} umount "${MNT}" ; then
     return 1
   fi
 
   # do an fsck
-  bstg_bsdfsck ${md}
-  if [ ${?} -ne 0 ] ; then
+  if ! bstg_bsdfsck "${md}" ; then
     return 1
   fi
 
-  bstg_undskvnconfig ${md} > /dev/null
-  if [ ${?} -ne 0 ] ; then
+  if ! bstg_undskvnconfig "${md}" > /dev/null ; then
     return 1
   fi
 

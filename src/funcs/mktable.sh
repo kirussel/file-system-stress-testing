@@ -16,10 +16,10 @@
 printf "void (*bstg_fembot_funcs[])(bstg_funcs_t *) = {\n"
 
 let acount=0
-for pname in ${@}
+for pname in "$@"
 do
-	FUNC="$(echo ${pname} | sed 's/\//_/g' | sed 's/[.]c//g')"
-	printf "  %s, /* %d */\n" ${FUNC} ${acount}
+	FUNC="$(echo "${pname}" | sed 's/\//_/g' | sed 's/[.]c//g')"
+	printf "  %s, /* %d */\n" "${FUNC}" ${acount}
     let acount=acount+1
 done
 

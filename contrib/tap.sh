@@ -1,4 +1,5 @@
 #!/bin/sh
+# shellcheck shell=sh
 #
 # Copyright 2026 Google LLC
 #
