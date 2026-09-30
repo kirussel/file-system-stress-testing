@@ -31,13 +31,11 @@ aibreann_umount()
   fi
 
   # mount this new filesystem
-  ${SUDO} umount ${MNT}
-  if [ ${?} -ne 0 ] ; then
+  if ! ${SUDO} umount "${MNT}" ; then
     return 1
   fi
 
-  bstg_undskvnconfig ${md}
-  if [ ${?} -ne 0 ] ; then
+  if ! bstg_undskvnconfig "${md}" ; then
     return 1
   fi
 

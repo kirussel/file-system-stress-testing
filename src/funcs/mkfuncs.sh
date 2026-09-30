@@ -15,9 +15,9 @@
 #
 SSRC="${1}"
 DEST="${2}"
-FUNC="$(echo ${2} | sed 's/\//_/g' | sed 's/[.]c//g')"
+FUNC="$(echo "${DEST}" | sed 's/\//_/g' | sed 's/[.]c//g')"
 printf "#include \"internalfuncs.h\"\n\n"
-printf "void %s(bstg_funcs_t *pf)\n{\n" ${FUNC}
+printf "void %s(bstg_funcs_t *pf)\n{\n" "${FUNC}"
 printf "  bstg_fdstore_t *ps;\n\n"
 printf "  ps = &pf->fdstore;\n"
 printf "  setproctitle(\"%%s\", __func__);\n"
@@ -28,4 +28,4 @@ printf "    fsync(2);\n"
 printf "    tcdrain(2);\n"
 printf "    usleep(250);\n"
 printf "  }\n"
-printf "  #include \"%s\"\n}\n\n" ${SSRC}
+printf "  #include \"%s\"\n}\n\n" "${SSRC}"

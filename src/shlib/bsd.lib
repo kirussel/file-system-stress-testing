@@ -29,11 +29,11 @@ bstg_undskvnconfig()
 
   case "${sysname}" in
   NetBSD)
-    ${SUDO} vnconfig -u ${md%%a}
+    ${SUDO} vnconfig -u "${md%%a}"
     ;;
 
   FreeBSD)
-    ${SUDO} mdconfig -d -u ${md} > /dev/null
+    ${SUDO} mdconfig -d -u "${md}" > /dev/null
     ;;
   esac
 }
@@ -60,11 +60,9 @@ bstg_dskvnconfig()
     let acount=0
     while [ ${acount} -lt 4 ]
     do
-      ${SUDO} vnconfig vnd${acount} ${dsk}
-      if [ ${?} -eq 0 ] ; then
+      if ${SUDO} vnconfig vnd${acount} "${dsk}" ; then
         # try and add a disklabel
-        ${SUDO} disklabel -f ../dsk/disktab -wr vnd${acount} "$(basename ${dsk} .dsk)"
-        if [ ${?} -ne 0 ] ; then
+        if ! ${SUDO} disklabel -f ../dsk/disktab -wr vnd${acount} "$(basename "${dsk}" .dsk)" ; then
           bstg_undskvnconfig vnd${acount}
           break
         fi
@@ -76,14 +74,14 @@ bstg_dskvnconfig()
     ;;
 
   FreeBSD)
-    md="$(${SUDO} mdconfig -a -t vnode -f ${dsk})"
+    md="$(${SUDO} mdconfig -a -t vnode -f "${dsk}")"
     ;;
   esac
 
   if [ -z "${md}" ] ; then
     return 1
   fi
-  echo ${md}
+  echo "${md}"
   return 0
 }
 
@@ -105,19 +103,19 @@ bstg_newfs()
 
   case "${sysname}" in
   NetBSD)
-    blocks="$(stat -f '%b' ${dsk})"
-    if [ ${blocks} -lt 204800 ] ; then
+    blocks="$(stat -f '%b' "${dsk}")"
+    if [ "${blocks}" -lt 204800 ] ; then
       echo INFO: avoid wapbl on small disks
-      ${SUDO} newfs -V4 -T "$(basename ${dsk} .dsk)" -O2 /dev/r${md}
+      ${SUDO} newfs -V4 -T "$(basename "${dsk}" .dsk)" -O2 "/dev/r${md}"
     else
       echo INFO: init filesystem to allow wapbl
-      ${SUDO} newfs -V4 -T "$(basename ${dsk} .dsk)" -O2 -s -64m /dev/r${md}
-      ${SUDO} tunefs -l 64m /dev/r${md}
+      ${SUDO} newfs -V4 -T "$(basename "${dsk}" .dsk)" -O2 -s -64m "/dev/r${md}"
+      ${SUDO} tunefs -l 64m "/dev/r${md}"
     fi
     ;;
 
   FreeBSD)
-    ${SUDO} newfs -j /dev/${md}
+    ${SUDO} newfs -j "/dev/${md}"
     ;;
   esac
 }
@@ -138,11 +136,11 @@ bstg_bsdfsck()
 
   case "${sysname}" in
   NetBSD)
-    ${SUDO} fsck_ffs -f /dev/r${md}
+    ${SUDO} fsck_ffs -f "/dev/r${md}"
     ;;
 
   FreeBSD)
-    ${SUDO} fsck_ufs -f /dev/${md}
+    ${SUDO} fsck_ufs -f "/dev/${md}"
     ;;
   esac
 }
@@ -168,18 +166,18 @@ bstg_bsdmount()
 
   case "${sysname}" in
   NetBSD)
-    blocks="$(stat -f '%b' ${dsk})"
-    if [ ${blocks} -lt 204800 ] ; then
+    blocks="$(stat -f '%b' "${dsk}")"
+    if [ "${blocks}" -lt 204800 ] ; then
       echo INFO: avoid wapbl on small disks
-      ${SUDO} mount -v ${md} ${mnt}
+      ${SUDO} mount -v "${md}" "${mnt}"
     else
       echo INFO: mount filesystem to allow wapbl
-      ${SUDO} mount -v -o log ${md} ${mnt}
+      ${SUDO} mount -v -o log "${md}" "${mnt}"
     fi
     ;;
 
   FreeBSD)
-    ${SUDO} mount ${md} ${mnt}
+    ${SUDO} mount "${md}" "${mnt}"
     ;;
   esac
 }

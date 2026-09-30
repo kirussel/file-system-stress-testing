@@ -1,0 +1,11 @@
+# Check scripts as ksh by default, even if they have a #!/bin/sh line or
+# none at all (e.g. src/shlib/bsd.lib, contrib/elffuzz.sh). Scripts that
+# really run under sh opt out with a "# shellcheck shell=sh" directive.
+shell=ksh
+
+# Resolve `. ../shlib/bsd.lib` relative to the sourcing script.
+source-path=SCRIPTDIR
+external-sources=true
+
+# `let` is standard ksh; don't nag about preferring (( )).
+disable=SC2219

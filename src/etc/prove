@@ -1,4 +1,5 @@
 #!/bin/sh
+# shellcheck shell=sh
 #
 # Copyright 2011 Google Inc.
 #
@@ -14,7 +15,7 @@
 # limitations under the License.
 #
 
-for exe in $@
+for exe in "$@"
 do
 	"${exe}"
 done
