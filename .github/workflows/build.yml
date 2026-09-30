@@ -50,11 +50,7 @@ jobs:
           ./mkpax -c -f "$RUNNER_TEMP/ops.tgz"
           ./mkpax -r -f "$RUNNER_TEMP/ops.tgz" > /dev/null
 
-      # aibreann is the slow step, so skip it on plain branch pushes: a
-      # branch with a PR gets it from the pull_request run, and master gets
-      # it when a PR is merged.
       - name: Run aibreann under /tmp/aibreann
-        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
         run: prove -v --exec sh contrib/aibreann-tmp.sh
 
       # -o pathstore.h keeps make from regenerating it via the dsk target.
