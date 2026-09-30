@@ -15,7 +15,7 @@
 
 include ./inc/default.mk
 
-.PHONY: all clean
+.PHONY: all clean lint
 
 DIRS=lib funcs dsk shlib aibreann brannagh clodagh
 
@@ -35,3 +35,10 @@ clean:
 		$(MAKE) -C $$d $@; \
 	done
 
+lint:
+	@rc=0; \
+	$(SHELLCHECK) etc/prove || rc=1; \
+	for d in $(DIRS) ; do \
+		$(MAKE) -C $$d $@ || rc=1; \
+	done; \
+	exit $$rc

@@ -55,3 +55,5 @@ $(TSTS:%=%_test): %_test: %_test.c
 check: $(TSTS:%=%_test)
 	$(PROVE) $(^:%=./%)
 
+LINT_SH=mkfuncs.sh mkproto.sh mktable.sh
+include ../inc/lint.mk

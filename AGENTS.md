@@ -13,3 +13,5 @@ ksh` shebangs, but run fine under bash):
 contrib/tap.sh
 cd src && gmake KSH=bash
 ```
+
+To lint the shell scripts with `shellcheck`, run `gmake lint` from `src/`.

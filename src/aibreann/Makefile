@@ -36,3 +36,6 @@ check: ../dsk/$(DSK).dsk.gz
 
 clean:
 	$(RM) aibreann pathstore.h $(DSK).dsk aibreann.core
+
+LINT_SH=check.sh
+include ../inc/lint.mk

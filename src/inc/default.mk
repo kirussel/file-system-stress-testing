@@ -69,6 +69,10 @@ ifndef BASH
 BASH=bash
 endif
 
+ifndef SHELLCHECK
+SHELLCHECK=shellcheck
+endif
+
 ifndef M4
 M4=m4
 endif
