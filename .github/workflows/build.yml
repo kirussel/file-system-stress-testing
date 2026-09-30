@@ -51,7 +51,7 @@ jobs:
           ./mkpax -r -f "$RUNNER_TEMP/ops.tgz" > /dev/null
 
       - name: Run aibreann under /tmp/aibreann
-        run: sh contrib/aibreann-tmp.sh
+        run: prove -v --exec sh contrib/aibreann-tmp.sh
 
       # -o pathstore.h keeps make from regenerating it via the dsk target.
       # The EXIT trap removes the borrowed header even if the build fails.
