@@ -56,7 +56,7 @@ void
 usage(void)
 {
     fprintf(stderr, "usage: clodagh [-n]\n");
-    fprintf(stderr, "usage: clodagh archive-file\n");
+    fprintf(stderr, "usage: clodagh [-v] archive-file ...\n");
     exit(1);
 }
 
@@ -69,7 +69,7 @@ main(int argc, char *argv[])
     char *buf;
 
     verbose = nflag = 0;
-    while ((ch = getopt(argc, argv, "f:nv")) != -1) {
+    while ((ch = getopt(argc, argv, "nv")) != -1) {
         switch (ch) {
             case 'n':
                 nflag = 1;
@@ -82,7 +82,7 @@ main(int argc, char *argv[])
                 usage();
         }
     }
-    argv += optind-1;
+    argv += optind;
 
     if (nflag) {
         printf("%lu\n", NFUNCS);
@@ -102,7 +102,7 @@ main(int argc, char *argv[])
         if (pid == 0) {
             srand(x);
 
-            while (*argv++) {
+            for (; *argv; argv++) {
                 struct archive *a;
                 struct archive_entry *entry;
 
@@ -166,8 +166,6 @@ main(int argc, char *argv[])
         }
     }
 
-    while(wait(&status) > 0);
-    while(wait(&status) > 0);
     while(wait(&status) > 0);
 
     if (bstg_funcs_destroy(&bfs)) {
