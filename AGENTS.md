@@ -15,3 +15,5 @@ cd src && gmake KSH=bash
 ```
 
 To lint the shell scripts with `shellcheck`, run `gmake lint` from `src/`.
+To check C formatting with `clang-format` (18 or later, for
+`.clang-format-ignore`), run `gmake lint-c`; fix with `clang-format -i`.

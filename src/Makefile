@@ -15,7 +15,7 @@
 
 include ./inc/default.mk
 
-.PHONY: all clean lint
+.PHONY: all clean lint lint-c
 
 DIRS=lib funcs dsk shlib aibreann brannagh clodagh
 
@@ -42,3 +42,8 @@ lint:
 		$(MAKE) -C $$d $@ || rc=1; \
 	done; \
 	exit $$rc
+
+# Check C formatting against the repo-root .clang-format; files listed in
+# .clang-format-ignore are skipped.
+lint-c:
+	git ls-files '*.c' '*.h' | xargs $(CLANG_FORMAT) --dry-run --Werror
