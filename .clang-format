@@ -1,0 +1,30 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+ColumnLimit: 80
+IndentWidth: 4
+ContinuationIndentWidth: 4
+UseTab: Never
+BreakBeforeBraces: Linux
+# name that works in clang-format 18 and 19
+AlwaysBreakAfterReturnType: AllDefinitions
+AllowShortFunctionsOnASingleLine: None
+IndentCaseLabels: true
+AlignAfterOpenBracket: DontAlign
+AlignTrailingComments:
+  Kind: Leave
+PointerAlignment: Right
+Cpp11BracedListStyle: false
+MaxEmptyLinesToKeep: 2
+ReflowComments: false
+SortIncludes: Never
+ForEachMacros: [cJSON_ArrayForEach]
+# keep the trailing blank line many files end with
+KeepEmptyLinesAtEOF: true
+# "if (", "while (" but "cJSON_ArrayForEach(" and "f("
+SpaceBeforeParens: Custom
+SpaceBeforeParensOptions:
+  AfterControlStatements: true
+  AfterForeachMacros: false
+  AfterFunctionDeclarationName: false
+  AfterFunctionDefinitionName: false
