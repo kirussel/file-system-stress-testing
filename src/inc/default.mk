@@ -73,6 +73,10 @@ ifndef SHELLCHECK
 SHELLCHECK=shellcheck
 endif
 
+ifndef CLANG_FORMAT
+CLANG_FORMAT=clang-format
+endif
+
 ifndef M4
 M4=m4
 endif

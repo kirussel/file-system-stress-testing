@@ -16,7 +16,7 @@
 struct iovec script[] = {
     { "#!", 2 },
     { NULL, 0 },
-    { "\nexit 1\n", 8},
+    { "\nexit 1\n", 8 },
 };
 
 script[1].iov_len = strlen(script[1].iov_base = bstg_pathstore_get());

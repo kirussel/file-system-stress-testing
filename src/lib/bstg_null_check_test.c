@@ -34,7 +34,7 @@ main()
     plan_tests(2);
 
     if ((childpid = fork()) == 0) {
-	close(2);
+        close(2);
         bstg_null_check(NULL, "fred", 1234);
         abort();
     } else if (childpid > 0) {

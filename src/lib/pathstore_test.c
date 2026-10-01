@@ -29,7 +29,7 @@ __RCSID("$Id$");
 int
 main()
 {
-    const char * msg;
+    const char *msg;
     plan_tests(2);
 
     msg = bstg_pathstore_get();

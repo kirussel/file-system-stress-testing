@@ -36,8 +36,10 @@
 
 __RCSID("$Id$");
 
-#define NPATHS ((sizeof(bstg_pathstore)/sizeof(bstg_pathstore[0])))
-#define NFUNCS ((unsigned long)((sizeof(bstg_fembot_funcs)/sizeof(bstg_fembot_funcs[0]))))
+#define NPATHS ((sizeof(bstg_pathstore) / sizeof(bstg_pathstore[0])))
+#define NFUNCS                                                                 \
+    ((unsigned long)((                                                         \
+        sizeof(bstg_fembot_funcs) / sizeof(bstg_fembot_funcs[0]))))
 
 const char *const bstg_pathstore[] = {
 #include "pathstore.h"
@@ -116,7 +118,7 @@ main(int argc, char *argv[])
                     size_t size;
 
                     size = archive_entry_size(entry);
-                    buf = BSTGNULLCHECK(realloc(buf, size+1024));
+                    buf = BSTGNULLCHECK(realloc(buf, size + 1024));
                     if (archive_read_data(a, buf, size) == size) {
                         cJSON *ops;
                         cJSON *op;
@@ -130,8 +132,8 @@ main(int argc, char *argv[])
                          * clear diagnosis instead of failing the JSON parse */
                         if (strncmp(buf, "<?xml", 5) == 0) {
                             warnx("archive entry is in the old proplib/XML "
-                                "format; regenerate it with the current "
-                                "mkpax\n");
+                                  "format; regenerate it with the current "
+                                  "mkpax\n");
                             _exit(2);
                         }
 
@@ -149,7 +151,7 @@ main(int argc, char *argv[])
                              * so this cast (unlike a double->unsigned cast) is
                              * well-defined even for a hostile/corrupt archive */
                             id = (unsigned)op->valueint;
-                            (*bstg_fembot_funcs[id % NFUNCS]) (&bfs);
+                            (*bstg_fembot_funcs[id % NFUNCS])(&bfs);
                         }
                         cJSON_Delete(ops);
                     }
@@ -166,7 +168,8 @@ main(int argc, char *argv[])
         }
     }
 
-    while(wait(&status) > 0);
+    while (wait(&status) > 0)
+        ;
 
     if (bstg_funcs_destroy(&bfs)) {
         errx(1, "cannot destroy bfs");

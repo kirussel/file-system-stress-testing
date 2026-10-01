@@ -21,7 +21,8 @@ if ((path = strdup(bstg_pathstore_get())) != NULL) {
     if ((dirp = opendir(dirname(path)))) {
         struct dirent *dp;
 
-        while ((dp = readdir(dirp)) != NULL);
+        while ((dp = readdir(dirp)) != NULL)
+            ;
         closedir(dirp);
     }
     free(path);

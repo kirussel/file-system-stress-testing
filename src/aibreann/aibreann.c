@@ -26,8 +26,10 @@
 
 __RCSID("$Id$");
 
-#define NPATHS ((sizeof(bstg_pathstore)/sizeof(bstg_pathstore[0])))
-#define NFUNCS ((unsigned long)((sizeof(bstg_fembot_funcs)/sizeof(bstg_fembot_funcs[0]))))
+#define NPATHS ((sizeof(bstg_pathstore) / sizeof(bstg_pathstore[0])))
+#define NFUNCS                                                                 \
+    ((unsigned long)((                                                         \
+        sizeof(bstg_fembot_funcs) / sizeof(bstg_fembot_funcs[0]))))
 
 const char *const bstg_pathstore[] = {
 #include "pathstore.h"
@@ -93,10 +95,10 @@ main(int argc, char *argv[])
     }
 
     for (bstg_pathstore_count = 0; bstg_pathstore_count < NPATHS;
-            bstg_pathstore_count++) {
+         bstg_pathstore_count++) {
 
         if (bstg_fembot_funcs[farg] != src_close_closeall_bstg_funcs) {
-            (*bstg_fembot_funcs[farg]) (&bfs);
+            (*bstg_fembot_funcs[farg])(&bfs);
         }
 
         if (bstg_fdstore_closeall(&bfs.fdstore)) {

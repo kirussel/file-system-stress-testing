@@ -14,8 +14,8 @@
  */
 
 #ifdef SF_NODISKIO
-sendfile(bstg_fdstore_get(ps), bstg_fdstore_get(ps),
-    0, 0, NULL, NULL, SF_NODISKIO);
+sendfile(
+    bstg_fdstore_get(ps), bstg_fdstore_get(ps), 0, 0, NULL, NULL, SF_NODISKIO);
 #else
 /* TODO(me) write some quick hack here */
 #endif

@@ -26,10 +26,10 @@
 
 /* magic value to determine if data has been initialized */
 #ifndef BSTG_FDSTORE_MAGIC
-#define BSTG_FDSTORE_MAGIC  ((unsigned)(~0xbeef1238))
+#define BSTG_FDSTORE_MAGIC ((unsigned)(~0xbeef1238))
 #endif
 
-#define BSTGNULLCHECK(__x)	(bstg_null_check(__x, __FILE__, __LINE__))
+#define BSTGNULLCHECK(__x) (bstg_null_check(__x, __FILE__, __LINE__))
 
 /*
  * A collection of fds.
@@ -72,7 +72,7 @@ void bstg_preexec(bstg_fdstore_t *);
 
 /* magic value to determine if data has been initialized */
 #ifndef BSTG_FUNCS_MAGIC
-#define BSTG_FUNCS_MAGIC  ((unsigned)(~0xbeefabcd))
+#define BSTG_FUNCS_MAGIC ((unsigned)(~0xbeefabcd))
 #endif
 
 /*
@@ -103,7 +103,7 @@ int bstg_funcs_destroy(bstg_funcs_t *);
 
 /* magic value to determine if data has been initialized */
 #ifndef BSTG_FLIST_MAGIC
-#define BSTG_FLIST_MAGIC    ((unsigned)(~0xdead5555))
+#define BSTG_FLIST_MAGIC ((unsigned)(~0xdead5555))
 #endif
 
 /*
@@ -141,7 +141,7 @@ int bstg_flist_import(bstg_flist_t *, char *);
 pid_t bstg_waitpid(pid_t, int *, int);
 
 /* return a path in filesystem under test */
-char * bstg_pathstore_get();
+char *bstg_pathstore_get();
 
 /* signal handler that calls _exit(signo) */
 void bstg_signalx(int);
@@ -153,6 +153,6 @@ void bstg_signalj(int);
 /* Used to check the return ptr from malloc. */
 /* We will exit() on NULL or just return the pointer. */
 /* Use with BSTGNULLCHECK(), to get the file/line data. */
-void * bstg_null_check(void *, const char *, int );
+void *bstg_null_check(void *, const char *, int);
 
 #endif

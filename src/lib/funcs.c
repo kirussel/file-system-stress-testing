@@ -42,12 +42,8 @@ bstg_funcs_init(bstg_funcs_t *ps, int verbose, size_t length)
     ps->magic = 0;
     rc = bstg_fdstore_init(&ps->fdstore);
 
-    ps->pattern.iov_base = mmap(NULL,
-            ps->pattern.iov_len = length,
-            PROT_READ|PROT_WRITE,
-            MAP_ANON|MAP_SHARED,
-            -1,
-            0);
+    ps->pattern.iov_base = mmap(NULL, ps->pattern.iov_len = length,
+        PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, -1, 0);
     if (MAP_FAILED == ps->pattern.iov_base) {
         rc = errno;
     } else {
@@ -55,12 +51,8 @@ bstg_funcs_init(bstg_funcs_t *ps, int verbose, size_t length)
         mprotect(ps->pattern.iov_base, ps->pattern.iov_len, PROT_READ);
     }
 
-    ps->buffer.iov_base = mmap(NULL,
-            ps->buffer.iov_len = length,
-            PROT_READ|PROT_WRITE,
-            MAP_ANON|MAP_SHARED,
-            -1,
-            0);
+    ps->buffer.iov_base = mmap(NULL, ps->buffer.iov_len = length,
+        PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, -1, 0);
     if (MAP_FAILED == ps->buffer.iov_base) {
         rc = errno;
     }

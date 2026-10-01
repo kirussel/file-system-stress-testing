@@ -16,12 +16,12 @@
 struct iovec script[] = {
     { "#!", 2 },
     { NULL, 0 },
-    { "\nexit 1\n", 8},
+    { "\nexit 1\n", 8 },
 };
 int fd;
 
 script[1].iov_base = bstg_pathstore_get();
-script[1].iov_len = strlen((char*)script[1].iov_base);
+script[1].iov_len = strlen((char *)script[1].iov_base);
 fd = bstg_fdstore_get2(ps, 0);
 ftruncate(fd, 0);
 pwritev(fd, script, 3, 0);
