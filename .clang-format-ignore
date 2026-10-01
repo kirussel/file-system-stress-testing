@@ -1,0 +1,4 @@
+# Data tables and a vendored shim; formatting them is pure churn.
+src/lib/pathstore.c
+src/clodagh/pathstore.h
+src/etc/tap.h
