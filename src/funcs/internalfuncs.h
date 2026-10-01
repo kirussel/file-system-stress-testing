@@ -52,7 +52,7 @@
 #include <termios.h>
 
 #ifndef min
-#define min(a,b) (((a)<(b))?(a):(b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
 #endif
 
 #ifdef __NetBSD__
@@ -61,7 +61,7 @@
 #endif
 #define eaccess access
 #include <sys/mount.h>
-#define fdopendir(___fd)	((NULL))
+#define fdopendir(___fd) ((NULL))
 #endif
 
 #ifdef linux
@@ -75,7 +75,10 @@
 #endif
 
 #define lpathconf pathconf
-static inline void setproctitle(const char *fmt, ...) {}
+static inline void
+setproctitle(const char *fmt, ...)
+{
+}
 
 #ifndef __RCSID
 #define __RCSID(__not_used) struct rcsid_not_defined

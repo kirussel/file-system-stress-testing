@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-char buf[120]; 
+char buf[120];
 readlink(bstg_pathstore_get(), buf, 100);
 
 __RCSID("$Id$");

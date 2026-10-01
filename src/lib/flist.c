@@ -33,8 +33,7 @@ bstg_flist_init(bstg_flist_t *ps, u_int32_t number)
 {
     u_int32_t x;
 
-    if ((ps->pindex =
-        calloc(number, sizeof(*ps->pindex)))) {
+    if ((ps->pindex = calloc(number, sizeof(*ps->pindex)))) {
         ps->upper = ps->number = ps->capacity = number;
         ps->magic = BSTG_FLIST_MAGIC;
         for (x = 0; x < number; x++) {
@@ -106,8 +105,7 @@ bstg_flist_get(bstg_flist_t *ps, u_int32_t index)
  * one doesn't fit in a u_int32_t.
  */
 static int
-flist_parse(bstg_flist_t *ps, const char *options, int store,
-    u_int32_t *pcount)
+flist_parse(bstg_flist_t *ps, const char *options, int store, u_int32_t *pcount)
 {
     const char *curr;
     char *p;

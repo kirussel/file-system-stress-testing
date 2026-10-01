@@ -39,7 +39,7 @@ main()
         _exit(1);
     } else if (childpid > 0) {
         ok(bstg_waitpid(childpid, &status, 4) == childpid, "waited");
-	ok(WIFEXITED(status), "exited");
+        ok(WIFEXITED(status), "exited");
         ok(WEXITSTATUS(status) == 123, "correct exit code");
     }
 

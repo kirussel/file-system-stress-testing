@@ -37,10 +37,12 @@
 
 __RCSID("$Id$");
 
-#define AR_C    ((unsigned)(0x01))
-#define AR_R    ((unsigned)(0x02))
+#define AR_C ((unsigned)(0x01))
+#define AR_R ((unsigned)(0x02))
 
-#define NFUNCS ((unsigned long)((sizeof(bstg_fembot_funcs)/sizeof(bstg_fembot_funcs[0]))))
+#define NFUNCS                                                                 \
+    ((unsigned long)((                                                         \
+        sizeof(bstg_fembot_funcs) / sizeof(bstg_fembot_funcs[0]))))
 
 
 /* just add to make the code link -- bad API, I guess */
@@ -124,7 +126,7 @@ read_archive(char *filename)
         size_t size;
 
         size = archive_entry_size(entry);
-        buf = BSTGNULLCHECK(realloc(buf, size+1024));
+        buf = BSTGNULLCHECK(realloc(buf, size + 1024));
         if (archive_read_data(a, buf, size) == size) {
             cJSON *ops;
             cJSON *op;
@@ -137,7 +139,7 @@ read_archive(char *filename)
              * instead of failing the JSON parse */
             if (strncmp(buf, "<?xml", 5) == 0) {
                 errx(1, "archive entry is in the old proplib/XML format; "
-                    "regenerate it with the current mkpax");
+                        "regenerate it with the current mkpax");
             }
 
             ops = BSTGNULLCHECK(cJSON_Parse(buf));
@@ -188,7 +190,7 @@ main(int argc, char **argv)
     while ((rc = getopt(argc, argv, "cf:hJ:rS:v")) != -1) {
         char *p;
 
-        switch(rc) {
+        switch (rc) {
             case 'c':
                 options |= AR_C;
                 break;
@@ -256,7 +258,7 @@ main(int argc, char **argv)
         u_int32_t count;
 
         /* the number of items we will put in the shard */
-        count = flist.number/optJ;
+        count = flist.number / optJ;
 
         /* put any remainders in the last shard */
         if ((base + count + count) > flist.number) {
@@ -266,13 +268,13 @@ main(int argc, char **argv)
         /* setup the shard boundaries with our set */
         rc = bstg_flist_set(&flist, base, base + count);
         if (rc) {
-            errx(1, "%u %u %u", base, count, base+count);
+            errx(1, "%u %u %u", base, count, base + count);
         }
 
         if (optJ == 1) {
             /* default is just one shard, so use given filename */
             write_archive((farg == NULL ? "/dev/fd/1" : farg));
-        } else { 
+        } else {
             char filename[120];
 
             snprintf(filename, sizeof filename, "./%d.tar.gz", base);

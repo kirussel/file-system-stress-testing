@@ -25,7 +25,8 @@ if ((child = fork()) > 0) {
     extern char **environ;
 
     posix_spawn(NULL, token[0], NULL, NULL, token, environ);
-    while(wait(&status) > 0);
+    while (wait(&status) > 0)
+        ;
     _exit(0);
 }
 #endif

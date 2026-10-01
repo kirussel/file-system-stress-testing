@@ -19,7 +19,7 @@ if ((orig = strdup(bstg_pathstore_get()))) {
     char *src, *dst;
 
     src = dirname(orig);
-    dst = BSTG_BASEDIR"/tmp";
+    dst = BSTG_BASEDIR "/tmp";
 
     if (rename(src, dst) == 0) {
         rename(dst, src);

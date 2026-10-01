@@ -28,8 +28,10 @@
 
 __RCSID("$Id$");
 
-#define NPATHS ((sizeof(bstg_pathstore)/sizeof(bstg_pathstore[0])))
-#define NFUNCS ((unsigned long)((sizeof(bstg_fembot_funcs)/sizeof(bstg_fembot_funcs[0]))))
+#define NPATHS ((sizeof(bstg_pathstore) / sizeof(bstg_pathstore[0])))
+#define NFUNCS                                                                 \
+    ((unsigned long)((                                                         \
+        sizeof(bstg_fembot_funcs) / sizeof(bstg_fembot_funcs[0]))))
 
 const char *const bstg_pathstore[] = {
 #include "pathstore.h"
@@ -107,7 +109,7 @@ main(int argc, char *argv[])
             func = x;
 
             for (;;) {
-                (*bstg_fembot_funcs[func++ % NFUNCS]) (&bfs);
+                (*bstg_fembot_funcs[func++ % NFUNCS])(&bfs);
             }
 
             if (bstg_funcs_destroy(&bfs)) {
@@ -118,7 +120,8 @@ main(int argc, char *argv[])
         }
     }
 
-    while(wait(&status) > 0);
+    while (wait(&status) > 0)
+        ;
 
     if (bstg_funcs_destroy(&bfs)) {
         errx(1, "cannot destroy bfs");

@@ -13,6 +13,6 @@
  * limitations under the License.
  */
 
-fchmod(bstg_fdstore_get(ps), 0770|S_ISUID|S_ISGID|S_ISTXT);
+fchmod(bstg_fdstore_get(ps), 0770 | S_ISUID | S_ISGID | S_ISTXT);
 
 __RCSID("$Id$");

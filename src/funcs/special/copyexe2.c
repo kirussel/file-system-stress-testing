@@ -15,12 +15,12 @@
 
 struct stat sbuf;
 int fd;
-char * base;
+char *base;
 
 /* TODO(krussell): document /true is expected to be permanent */
 
 base = MAP_FAILED;
-fd = open(BSTG_BASEDIR"/true", O_RDONLY|O_NONBLOCK|O_NOCTTY);
+fd = open(BSTG_BASEDIR "/true", O_RDONLY | O_NONBLOCK | O_NOCTTY);
 if ((fd > 0) && (fstat(fd, &sbuf) == 0)) {
     base = mmap(NULL, sbuf.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 }

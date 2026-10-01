@@ -25,7 +25,8 @@ if (area != MAP_FAILED) {
     if (!sigsetjmp(bstg_jmpbuf, 1)) {
         signal(SIGBUS, bstg_signalj);
         signal(SIGSEGV, bstg_signalj);
-        memcpy(pf->buffer.iov_base, area, min(sbuf.st_size, pf->buffer.iov_len));
+        memcpy(
+            pf->buffer.iov_base, area, min(sbuf.st_size, pf->buffer.iov_len));
     }
     signal(SIGBUS, SIG_DFL);
     signal(SIGSEGV, SIG_DFL);

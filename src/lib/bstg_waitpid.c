@@ -31,7 +31,7 @@ bstg_waitpid(pid_t childpid, int *status, int ticks)
     pid_t rv;
 
     /* parent should busywait for the child to terminate */
-    for(count = 0; ;count++) {
+    for (count = 0;; count++) {
         if (count > ticks) {
             kill(childpid, SIGKILL);
         }

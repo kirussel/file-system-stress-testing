@@ -38,7 +38,7 @@ main()
     plan_tests(2);
 
     count = 0;
-    area = mmap(0, 4096, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0);
+    area = mmap(0, 4096, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
     if (!ok(area != MAP_FAILED, "mmap succeeded")) {
         return 1;
     }

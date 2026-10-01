@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-bstg_fdstore_set(ps, open(bstg_pathstore_get(),
-    O_RDWR|O_NONBLOCK|O_CREAT|O_NOCTTY|O_TRUNC,
-    0777));
+bstg_fdstore_set(
+    ps, open(bstg_pathstore_get(),
+            O_RDWR | O_NONBLOCK | O_CREAT | O_NOCTTY | O_TRUNC, 0777));
 
 __RCSID("$Id$");
