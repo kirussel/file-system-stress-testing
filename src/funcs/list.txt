@@ -103,4 +103,5 @@ src/chdir/fchdir.c
 src/mmap/truncmapped.c
 src/mmap/msyncasync.c
 src/mmap/msyncinval.c
+src/mmap/madvise.c
 src/mmap/madvisepriv.c
