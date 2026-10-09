@@ -21,6 +21,8 @@ size_t len;
 sbuf.st_size = 0;
 fstat(fd = bstg_fdstore_get(ps), &sbuf);
 len = sbuf.st_size;
+if (len < pf->pattern.iov_len)
+    len = pf->pattern.iov_len;
 
 area = mmap(NULL, len, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 
@@ -30,7 +32,7 @@ if (area != MAP_FAILED) {
     if (!sigsetjmp(bstg_jmpbuf, 1)) {
         signal(SIGBUS, bstg_signalj);
         signal(SIGSEGV, bstg_signalj);
-        memcpy(area, pf->pattern.iov_base, min(len, pf->pattern.iov_len));
+        memcpy(area, pf->pattern.iov_base, pf->pattern.iov_len);
     }
     signal(SIGBUS, SIG_DFL);
     signal(SIGSEGV, SIG_DFL);
