@@ -108,3 +108,4 @@ src/mmap/madvisepriv.c
 src/mmap/cowgolden.c
 src/mmap/mprotect.c
 src/mmap/beyondeof.c
+src/mmap/mremap.c
