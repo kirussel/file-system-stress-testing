@@ -1,9 +1,13 @@
 name: build
 
-# Compiles and runs the lib/funcs unit test suite on Linux. Deliberately
-# stops short of `make all`: the dsk/aibreann/brannagh/clodagh targets need
+# Compiles and runs the lib/funcs unit test suite on Linux, builds
+# clodagh/mkpax/aibreann/brannagh, round-trips a mkpax archive, and runs
+# aibreann. Deliberately stops short of `make all`: the dsk target needs
 # FreeBSD-only disk/mount tooling (mdconfig, newfs, BSD mount) that has no
-# Linux equivalent -- see AGENTS.md item 5.
+# Linux equivalent. Instead, aibreann runs against a plain directory tree
+# under $BASEDIR (see contrib/aibreann-tmp.sh), and brannagh, whose
+# pathstore.h normally comes from dsk, is compiled against
+# src/clodagh/pathstore.h.
 
 on:
   push:
@@ -12,13 +16,17 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Compiled into lib, funcs and the programs as BSTG_BASEDIR.
+      BASEDIR: /tmp/aibreann
     steps:
       - uses: actions/checkout@v4
 
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential autoconf automake libtool
+          sudo apt-get install -y build-essential autoconf automake libtool \
+            libcjson-dev libarchive-dev
 
       - name: Install libtap
         run: sh contrib/tap.sh
@@ -32,6 +40,26 @@ jobs:
         run: |
           make -C src/funcs KSH=bash
           make -C src/funcs check KSH=bash
+
+      - name: Build clodagh and mkpax
+        run: make -C src/clodagh KSH=bash
+
+      - name: Smoke test mkpax archive round-trip
+        working-directory: src/clodagh
+        run: |
+          ./mkpax -c -f "$RUNNER_TEMP/ops.tgz"
+          ./mkpax -r -f "$RUNNER_TEMP/ops.tgz" > /dev/null
+
+      - name: Run aibreann under /tmp/aibreann
+        run: prove -v --exec sh contrib/aibreann-tmp.sh
+
+      # -o pathstore.h keeps make from regenerating it via the dsk target.
+      # The EXIT trap removes the borrowed header even if the build fails.
+      - name: Build brannagh
+        run: |
+          trap 'rm -fv src/brannagh/pathstore.h' EXIT
+          cp -v src/clodagh/pathstore.h src/brannagh/pathstore.h
+          make -C src/brannagh brannagh -o pathstore.h KSH=bash
 
   lint:
     runs-on: ubuntu-latest
