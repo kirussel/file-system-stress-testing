@@ -105,3 +105,4 @@ src/mmap/msyncasync.c
 src/mmap/msyncinval.c
 src/mmap/madvise.c
 src/mmap/madvisepriv.c
+src/mmap/cowgolden.c
