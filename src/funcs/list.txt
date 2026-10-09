@@ -101,3 +101,4 @@ src/chmod/fchmod07770.c
 src/chdir/chdir.c
 src/chdir/fchdir.c
 src/mmap/truncmapped.c
+src/mmap/msyncasync.c
