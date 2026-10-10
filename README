@@ -24,6 +24,8 @@ To use this software, you will require:
 - Nik Clayton's libtap (optional)
 - libarchive http://www.libarchive.org/ (in FreeBSD/NetBSD already)
 - libcjson https://github.com/DaveGamble/cJSON (FreeBSD: devel/libcjson)
+- libbsd https://libbsd.freedesktop.org/ and pkg-config (Linux only, for
+  setproctitle(3); Debian/Ubuntu: libbsd-dev)
 
 
 Setup for the host

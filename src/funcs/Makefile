@@ -50,7 +50,7 @@ clean:
 	$(RM) $(TSTS:%=%_test)
 
 $(TSTS:%=%_test): %_test: %_test.c
-	$(CC) $(CFLAGS) $(BSTG_TAP_CFLAGS) $^ $(LDFLAGS) $(BSTG_TAP_LDFLAGS) -o $@
+	$(CC) $(CFLAGS) $(BSTG_TAP_CFLAGS) $^ $(LDFLAGS) $(BSTG_TAP_LDFLAGS) $(BSTG_BSD_LIBS) -o $@
 
 check: $(TSTS:%=%_test)
 	$(PROVE) $(^:%=./%)

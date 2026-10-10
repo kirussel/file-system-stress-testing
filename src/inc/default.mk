@@ -97,3 +97,20 @@ endif
 ifndef RANLIB
 RANLIB=ranlib
 endif
+
+ifndef PKG_CONFIG
+PKG_CONFIG=pkg-config
+endif
+
+# Linux lacks setproctitle(3); take it from libbsd. libbsd-ctor runs
+# setproctitle_init() automatically, so main() needs no changes.
+ifeq ($(shell uname -s),Linux)
+ifndef BSTG_BSD_CFLAGS
+BSTG_BSD_CFLAGS:=$(shell $(PKG_CONFIG) --cflags libbsd-ctor)
+endif
+ifndef BSTG_BSD_LIBS
+BSTG_BSD_LIBS:=$(shell $(PKG_CONFIG) --libs libbsd-ctor)
+endif
+endif
+
+CFLAGS+=$(BSTG_BSD_CFLAGS)

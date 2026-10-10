@@ -42,7 +42,7 @@ pathstore.h: ../dsk/$(DSK).h
 	sed 's/111/fff/g' < $< >> pathstore.h
 
 brannagh: brannagh.c pathstore.h
-	$(CC) $(CFLAGS) $< $(LDFLAGS) -o $@
+	$(CC) $(CFLAGS) $< $(LDFLAGS) $(BSTG_BSD_LIBS) -o $@
 
 install:
 

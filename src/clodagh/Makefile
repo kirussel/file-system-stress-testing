@@ -23,10 +23,10 @@ LDFLAGS+=-L../funcs -lfembotfuncs -L../lib -lfembot -L/usr/local/lib -lcjson -la
 all: mkpax clodagh
 
 clodagh: clodagh.c pathstore.h
-	$(CC) $(CFLAGS) $< $(LDFLAGS) -o $@
+	$(CC) $(CFLAGS) $< $(LDFLAGS) $(BSTG_BSD_LIBS) -o $@
 
 mkpax: mkpax.c
-	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
+	$(CC) $(CFLAGS) $^ $(LDFLAGS) $(BSTG_BSD_LIBS) -o $@
 
 clean:
 	$(RM) clodagh clodagh.core mkpax mkpax.core
