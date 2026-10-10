@@ -24,7 +24,9 @@
 #include <stdio.h>
 #include <sys/cdefs.h>
 
+#ifdef __RCSID
 __RCSID("$Id$");
+#endif
 
 #define NPATHS ((sizeof(bstg_pathstore)/sizeof(bstg_pathstore[0])))
 #define NFUNCS ((unsigned long)((sizeof(bstg_fembot_funcs)/sizeof(bstg_fembot_funcs[0]))))
