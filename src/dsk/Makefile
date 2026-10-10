@@ -76,7 +76,7 @@ $(RAWDSK:%=%.h): %.h: %.dsk true true.sh
 	$(INSTALL) -c -m 0777 true.sh $(DIR111)/true.sh.truncate
 	truncate -s 8 $(DIR111)/true.sh.truncate
 	truncate -s $(ONEMG) $(DIR111)/true.sh.truncate
-	umask 0 ; ln -s "" $(DIR111)/symlinkempty
+	- umask 0 ; ln -s "" $(DIR111)/symlinkempty
 	umask 0 ; ln -s "a" $(DIR111)/b
 	umask 0 ; ln -s "b" $(DIR111)/c
 	umask 0 ; ln -s "c" $(DIR111)/a

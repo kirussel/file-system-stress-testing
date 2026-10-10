@@ -35,7 +35,9 @@
 #include <assert.h>
 #include <sys/cdefs.h>
 
+#ifdef __RCSID
 __RCSID("$Id$");
+#endif
 
 #define AR_C    ((unsigned)(0x01))
 #define AR_R    ((unsigned)(0x02))

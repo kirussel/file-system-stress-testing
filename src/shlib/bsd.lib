@@ -35,6 +35,10 @@ bstg_undskvnconfig()
   FreeBSD)
     ${SUDO} mdconfig -d -u "${md}" > /dev/null
     ;;
+
+  Linux)
+    ${SUDO} losetup -d "${md}" > /dev/null
+    ;;
   esac
 }
 
@@ -75,6 +79,10 @@ bstg_dskvnconfig()
 
   FreeBSD)
     md="$(${SUDO} mdconfig -a -t vnode -f "${dsk}")"
+    ;;
+
+  Linux)
+    md="$(${SUDO} losetup -f --show "${dsk}" | sed 's|^/dev/||')"
     ;;
   esac
 
@@ -117,6 +125,10 @@ bstg_newfs()
   FreeBSD)
     ${SUDO} newfs -j "/dev/${md}"
     ;;
+
+  Linux)
+    ${SUDO} mkfs.ext4 -F -q "/dev/${md}"
+    ;;
   esac
 }
 
@@ -141,6 +153,10 @@ bstg_bsdfsck()
 
   FreeBSD)
     ${SUDO} fsck_ufs -f "/dev/${md}"
+    ;;
+
+  Linux)
+    ${SUDO} fsck.ext4 -f "${md}"
     ;;
   esac
 }
@@ -177,6 +193,10 @@ bstg_bsdmount()
     ;;
 
   FreeBSD)
+    ${SUDO} mount "${md}" "${mnt}"
+    ;;
+
+  Linux)
     ${SUDO} mount "${md}" "${mnt}"
     ;;
   esac
