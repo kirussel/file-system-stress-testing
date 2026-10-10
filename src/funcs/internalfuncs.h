@@ -75,6 +75,8 @@
 #endif
 
 #define lpathconf pathconf
+/* glibc only declares eaccess() under _GNU_SOURCE; use the POSIX equivalent. */
+#define eaccess(__p, __m) faccessat(AT_FDCWD, (__p), (__m), AT_EACCESS)
 static inline void setproctitle(const char *fmt, ...) {}
 
 #ifndef __RCSID
