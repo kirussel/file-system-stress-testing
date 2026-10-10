@@ -14,4 +14,8 @@ contrib/tap.sh
 cd src && gmake KSH=bash
 ```
 
+On Linux the build uses `contrib/install.sh` as `INSTALL`: it drops BSD
+`install -f flags` (unsupported by GNU `install`) and emulates `-f uchg` with
+`chattr +i`, using `sudo` unless run as root. Override with `INSTALL=...`.
+
 To lint the shell scripts with `shellcheck`, run `gmake lint` from `src/`.

@@ -86,7 +86,12 @@ SUDO=sudo
 endif
 
 ifndef INSTALL
+ifeq ($(shell uname -s),Linux)
+# GNU install lacks BSD's "-f flags"; see contrib/install.sh
+INSTALL:=$(abspath $(dir $(lastword $(filter %/default.mk,$(MAKEFILE_LIST))))../../contrib/install.sh)
+else
 INSTALL=install
+endif
 endif
 
 ifndef RANLIB
