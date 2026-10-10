@@ -18,7 +18,8 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential autoconf automake libtool
+          sudo apt-get install -y build-essential autoconf automake libtool \
+            libbsd-dev pkg-config
 
       - name: Install libtap
         run: sh contrib/tap.sh

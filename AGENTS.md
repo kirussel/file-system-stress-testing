@@ -10,9 +10,14 @@ work around a missing `ksh` (the `src/funcs` code generators have `#!/bin/
 ksh` shebangs, but run fine under bash):
 
 ```sh
+sudo apt-get install -y libbsd-dev pkg-config
 contrib/tap.sh
 cd src && gmake KSH=bash
 ```
+
+Linux builds also link `libbsd` (via `pkg-config libbsd-ctor`) for
+`setproctitle(3)`; install `libbsd-dev` and `pkg-config` first. Override with
+`BSTG_BSD_CFLAGS=`/`BSTG_BSD_LIBS=`.
 
 On Linux the build uses `contrib/install.sh` as `INSTALL`: it drops BSD
 `install -f flags` (unsupported by GNU `install`) and emulates `-f uchg` with

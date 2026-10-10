@@ -24,7 +24,7 @@ DSK=rd51
 all: aibreann
 
 aibreann: aibreann.c pathstore.h
-	$(CC) $(CFLAGS) $< $(LDFLAGS) -o $@
+	$(CC) $(CFLAGS) $< $(LDFLAGS) $(BSTG_BSD_LIBS) -o $@
 
 pathstore.h: ../dsk/$(DSK).h
 	$(CP) -f $< $@
