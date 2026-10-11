@@ -25,3 +25,13 @@ done
 
 printf "};\n"
 
+printf "\nconst char *const bstg_fembot_names[] = {\n"
+
+for pname in "$@"
+do
+	NAME="${pname%_bstg_funcs.c}"
+	printf "  \"%s\",\n" "${NAME}"
+done
+
+printf "};\n"
+

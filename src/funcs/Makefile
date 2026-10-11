@@ -27,13 +27,13 @@ TSTS=fembotfuncs
 
 all: libfembotfuncs.a fembotfuncs.h
 
-fembotfuncs.h: $(RAW:%=%_bstg_funcs.c)
+fembotfuncs.h: $(RAW:%=%_bstg_funcs.c) mkproto.sh mktable.sh
 	$(RM) $@
 	printf "#ifndef __FEMBOTFUNCS_H\n" > $@
 	printf "#define __FEMBOTFUNCS_H\n" >> $@
 	cat topfuncs.h >> $@
-	$(SETENV) $(KSH) ./mkproto.sh $^ >> $@
-	$(SETENV) $(KSH) ./mktable.sh $^ >> $@
+	$(SETENV) $(KSH) ./mkproto.sh $(filter %.c,$^) >> $@
+	$(SETENV) $(KSH) ./mktable.sh $(filter %.c,$^) >> $@
 	printf "\n#endif\n" >> $@
 
 libfembotfuncs.a: $(RAW:%=%_bstg_funcs.o)

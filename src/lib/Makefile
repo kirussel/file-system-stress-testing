@@ -25,7 +25,7 @@ LDFLAGS+=-L../lib -lfembot
 .PHONY: all clean check
 
 SRCS=fdstore bstg_fdstore_close bstg_waitpid \
-    funcs flist bstg_signalx bstg_signalj bstg_null_check #pathstore
+    funcs flist bstg_status bstg_signalx bstg_signalj bstg_null_check #pathstore
 
 all: libfembot.a
 

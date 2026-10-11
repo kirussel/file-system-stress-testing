@@ -36,3 +36,12 @@ the kernel core.
 archive created by an older `mkpax` (XML/proplib format) will not be
 readable by the current `mkpax -r` or `clodagh` -- regenerate it with
 the current `mkpax -c` instead.
+
+### Dashboard
+
+`clodagh -s big.tgz` shows the same live dashboard as
+`brannagh -s`: ops/sec, live workers, worker deaths with the op they were in,
+stalled workers, and the op mix.
+
+`-s` cannot be combined with `-v`: verbose output from the workers would
+corrupt the dashboard, so the combination is rejected with a usage error.
