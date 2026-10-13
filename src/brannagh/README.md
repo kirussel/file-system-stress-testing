@@ -19,7 +19,8 @@ gmake -C ${BRANNAGH?} check
 
 Run `./brannagh -s` to get a live dashboard on a tty. It shows
 run time, total ops and ops/sec, how many workers are alive, the last worker to
-die (with its signal and the op it was in), workers stuck in one op for more
+die (with its signal and the op it was in), disk space and inode use of the
+test directory (like `df -h`), workers stuck in one op for more
 than 10 seconds, and the most frequently run ops.
 
 `-s` cannot be combined with `-v`: verbose output from the workers would

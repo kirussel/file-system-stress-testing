@@ -44,7 +44,7 @@ main()
     FILE *out;
     char buf[8192];
 
-    plan_tests(13);
+    plan_tests(14);
 
     st = bstg_status_init(NFUNCS, NCHILD + 1);
     ok(st != NULL, "init");
@@ -105,6 +105,7 @@ main()
     }
     ok(strstr(buf, "a/one") != NULL && strstr(buf, "deaths") != NULL,
         "draw");
+    ok(strstr(buf, "disk     : " BSTG_BASEDIR) != NULL, "disk line");
 
     /* a corrupt lastop must not index past the names, nor repaint wrongly */
     st->child[0].lastop = NFUNCS + 5;

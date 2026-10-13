@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <errno.h>
 #include <inttypes.h>
 #include <signal.h>
 #include <stdio.h>
@@ -20,6 +21,7 @@
 #include <string.h>
 #include <sys/cdefs.h>
 #include <sys/mman.h>
+#include <sys/statvfs.h>
 #include <sys/wait.h>
 #include <time.h>
 
@@ -186,6 +188,64 @@ elapsed(FILE *out, time_t secs)
         (long)(secs / 3600 % 24), (long)(secs / 60 % 60), (long)(secs % 60));
 }
 
+/* like df -h: 1024 based, one decimal below 10, no decimal above */
+static void
+human(char *buf, size_t len, u_int64_t n)
+{
+    static const char units[] = "BKMGTPE";
+    double v = (double)n;
+    int u = 0;
+
+    while (v >= 1024 && units[u + 1] != '\0') {
+        v /= 1024;
+        u++;
+    }
+    if (u == 0 || v >= 10) {
+        snprintf(buf, len, "%.0f%c", v, units[u]);
+    } else {
+        snprintf(buf, len, "%.1f%c", v, units[u]);
+    }
+}
+
+/* percentage of whole, rounded up like df (and without libm's ceil) */
+static int
+pct(u_int64_t part, u_int64_t whole)
+{
+    double p = whole ? 100.0 * part / whole : 0.0;
+    int ip = (int)p;
+
+    return p > ip ? ip + 1 : ip;
+}
+
+/* df -h, and df -i, of the directory the tests run in */
+static void
+diskline(FILE *out)
+{
+    struct statvfs sv;
+    u_int64_t size, used, avail;
+    char s[16], u[16], a[16];
+
+    if (statvfs(BSTG_BASEDIR, &sv) != 0) {
+        fprintf(out, "  disk     : %s unavailable: %s\n", BSTG_BASEDIR,
+            strerror(errno));
+        return;
+    }
+    size = (u_int64_t)sv.f_blocks * sv.f_frsize;
+    used = (u_int64_t)(sv.f_blocks - sv.f_bfree) * sv.f_frsize;
+    avail = (u_int64_t)sv.f_bavail * sv.f_frsize;
+    human(s, sizeof s, size);
+    human(u, sizeof u, used);
+    human(a, sizeof a, avail);
+    /* df's capacity: used / (used + avail), rounded up */
+    fprintf(out, "  disk     : %s  size %s  used %s  avail %s  %d%%",
+        BSTG_BASEDIR, s, u, a, pct(used, used + avail));
+    if (sv.f_files != 0) {
+        fprintf(out, "  inodes %d%%",
+            pct(sv.f_files - sv.f_ffree, sv.f_files));
+    }
+    fputc('\n', out);
+}
+
 /* qsort_r() differs between BSD and glibc, so sort through a global */
 static const u_int64_t *sortkey;
 
@@ -268,6 +328,7 @@ bstg_status_draw(bstg_status_t *st, FILE *out, const char *const names[],
     fprintf(out, "\n  total ops: %" PRIu64 "\n", total);
     fprintf(out, "  ops/sec  : %.0f (now)  %.0f (avg)\n", cur, avg);
     fprintf(out, "  workers  : %u/%u alive\n", alive, st->nchildren);
+    diskline(out);
     fprintf(out, "  deaths   : %" PRIu64, st->deaths);
     if (st->lastdeath >= 0) {
         bstg_status_child_t *c = &st->child[st->lastdeath];

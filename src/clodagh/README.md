@@ -40,7 +40,7 @@ the current `mkpax -c` instead.
 ### Dashboard
 
 `clodagh -s big.tgz` shows the same live dashboard as
-`brannagh -s`: ops/sec, live workers, worker deaths with the op they were in,
+`brannagh -s`: ops/sec, live workers, disk space, worker deaths with the op they were in,
 stalled workers, and the op mix.
 
 `-s` cannot be combined with `-v`: verbose output from the workers would
