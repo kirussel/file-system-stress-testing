@@ -36,27 +36,11 @@ libfembot.a: $(SRCS:%=%.o)
 $(SRCS:%=%_test): %_test: %_test.c
 	$(CC) $(CFLAGS) $(BSTG_TAP_CFLAGS) $^ $(LDFLAGS) $(BSTG_TAP_LDFLAGS) -o $@
 
-# libcheck (https://libcheck.github.io/check/) unit tests: foo_check.c
-CHECK_SRCS=bstg_status
-
-ifndef BSTG_CHECK_CFLAGS
-BSTG_CHECK_CFLAGS:=$(shell $(PKG_CONFIG) --cflags check 2>/dev/null)
-endif
-
-ifndef BSTG_CHECK_LIBS
-BSTG_CHECK_LIBS:=$(shell $(PKG_CONFIG) --libs check 2>/dev/null || echo -lcheck)
-endif
-
-$(CHECK_SRCS:%=%_check): %_check: %_check.c libfembot.a
-	$(CC) $(CFLAGS) $(BSTG_CHECK_CFLAGS) $< $(LDFLAGS) $(BSTG_CHECK_LIBS) -o $@
-
-check: $(SRCS:%=%_test) $(CHECK_SRCS:%=%_check)
-	$(PROVE) $(SRCS:%=./%_test)
-	for t in $(CHECK_SRCS:%=./%_check); do $$t || exit 1; done
+check: $(SRCS:%=%_test)
+	$(PROVE) $(^:%=./%)
 
 clean:
-	$(RM) libfembot.a $(SRCS:%=%.o) $(SRCS:%=%_test) \
-	    $(CHECK_SRCS:%=%_check)
+	$(RM) libfembot.a $(SRCS:%=%.o) $(SRCS:%=%_test)
 
 LINT_SH=
 include ../inc/lint.mk

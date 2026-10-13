@@ -5,7 +5,6 @@
 
 # lib and funcs tests (TAP binaries)
 src/lib/*_test
-src/lib/*_check
 src/funcs/*_test
 
 # funcs: generated wrappers and header
