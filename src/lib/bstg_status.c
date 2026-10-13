@@ -14,6 +14,7 @@
  */
 
 #include <errno.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <signal.h>
 #include <stdio.h>
@@ -23,6 +24,7 @@
 #include <sys/mman.h>
 #include <sys/statvfs.h>
 #include <sys/wait.h>
+#include <unistd.h>
 #include <time.h>
 
 #include "fembot.h"
@@ -70,6 +72,8 @@ maplen(unsigned nfuncs, unsigned nchildren)
         (size_t)nchildren * rowstride(nfuncs) * sizeof(u_int64_t);
 }
 
+static void diskstart(bstg_status_disk_t *);
+
 /*
  * Allocate the counters in an anonymous shared mapping, so that workers
  * created by fork() update the same memory the parent draws from.
@@ -102,6 +106,7 @@ bstg_status_init(unsigned nfuncs, unsigned nchildren)
     for (i = 0; i < nchildren; i++) {
         st->child[i].lastop = -1;
     }
+    diskstart(&st->disk);
     return st;
 }
 
@@ -113,6 +118,20 @@ bstg_status_child(bstg_status_t *st, unsigned idx, pid_t pid)
         return;
     }
     st->child[idx].pid = pid;
+}
+
+int
+bstg_status_done(bstg_status_t *st)
+{
+    unsigned i, started;
+
+    if (st == NULL || st->magic != BSTG_STATUS_MAGIC) {
+        return 1;
+    }
+    for (i = started = 0; i < st->nchildren; i++) {
+        started += st->child[i].pid != 0;
+    }
+    return st->deaths >= started;
 }
 
 /*
@@ -217,31 +236,175 @@ pct(u_int64_t part, u_int64_t whole)
     return p > ip ? ip + 1 : ip;
 }
 
-/* df -h, and df -i, of the directory the tests run in */
+/*
+ * One line of JSON per statvfs, written whole so that the parent never
+ * reads half of one. The parent parses it with the same format.
+ */
+#define DISKFMT "{\"t\":%lld,\"err\":%d,\"size\":%llu,\"used\":%llu," \
+    "\"avail\":%llu,\"files\":%llu,\"ffree\":%llu}\n"
+
+/*
+ * The disk helper: statvfs() BSTG_BASEDIR once a second and report on
+ * wfd. If statvfs hangs, so does the helper, and the parent sees the
+ * reports stop. Never returns.
+ */
 static void
-diskline(FILE *out)
+diskhelper(int wfd, pid_t parent)
 {
     struct statvfs sv;
-    u_int64_t size, used, avail;
-    char s[16], u[16], a[16];
+    char line[256];
+    int n, err;
 
-    if (statvfs(BSTG_BASEDIR, &sv) != 0) {
-        fprintf(out, "  disk     : %s unavailable: %s\n", BSTG_BASEDIR,
-            strerror(errno));
+    for (;;) {
+        memset(&sv, 0, sizeof(sv));
+        err = statvfs(BSTG_BASEDIR, &sv) != 0 ? errno : 0;
+        n = snprintf(line, sizeof(line), DISKFMT, (long long)now_secs(), err,
+            (unsigned long long)sv.f_blocks * sv.f_frsize,
+            (unsigned long long)(sv.f_blocks - sv.f_bfree) * sv.f_frsize,
+            (unsigned long long)sv.f_bavail * sv.f_frsize,
+            (unsigned long long)sv.f_files,
+            (unsigned long long)sv.f_ffree);
+        /* the parent may have gone while we were stuck in statvfs */
+        if (getppid() != parent || write(wfd, line, n) != n) {
+            _exit(0);
+        }
+        sleep(1);
+    }
+}
+
+/* start the helper; on any failure there is just no disk line */
+static void
+diskstart(bstg_status_disk_t *d)
+{
+    int fds[2];
+    pid_t parent, pid;
+
+    d->fd = -1;
+    d->pid = -1;
+    d->started = now_secs();
+    if (pipe(fds) != 0) {
         return;
     }
-    size = (u_int64_t)sv.f_blocks * sv.f_frsize;
-    used = (u_int64_t)(sv.f_blocks - sv.f_bfree) * sv.f_frsize;
-    avail = (u_int64_t)sv.f_bavail * sv.f_frsize;
-    human(s, sizeof s, size);
-    human(u, sizeof u, used);
-    human(a, sizeof a, avail);
+    fcntl(fds[0], F_SETFD, FD_CLOEXEC);
+    fcntl(fds[1], F_SETFD, FD_CLOEXEC);
+    fcntl(fds[0], F_SETFL, O_NONBLOCK);
+    parent = getpid();
+    /*
+     * d lives in the shared mapping: only the parent may store the pid,
+     * or the helper's fork() result (0) would overwrite it.
+     */
+    pid = fork();
+    if (pid == 0) {
+        close(fds[0]);
+        diskhelper(fds[1], parent);
+    }
+    close(fds[1]);
+    if (pid < 0) {
+        close(fds[0]);
+        return;
+    }
+    d->pid = pid;
+    d->fd = fds[0];
+}
+
+/* take whatever the helper has said; the newest complete line wins */
+static void
+diskread(bstg_status_disk_t *d)
+{
+    ssize_t n;
+    char *nl;
+    long long t;
+    unsigned long long size, used, avail, files, ffree;
+    int err;
+
+    if (d->fd < 0) {
+        return;
+    }
+    while ((n = read(d->fd, d->buf + d->len, sizeof(d->buf) - 1 - d->len)) > 0) {
+        d->len += n;
+        d->buf[d->len] = '\0';
+        while ((nl = memchr(d->buf, '\n', d->len)) != NULL) {
+            *nl = '\0';
+            if (sscanf(d->buf, DISKFMT, &t, &err, &size, &used, &avail,
+                    &files, &ffree) == 7) {
+                d->have = 1;
+                d->t = (time_t)t;
+                d->err = err;
+                d->size = size;
+                d->used = used;
+                d->avail = avail;
+                d->files = files;
+                d->ffree = ffree;
+            }
+            d->len -= nl + 1 - d->buf;
+            memmove(d->buf, nl + 1, d->len + 1);
+        }
+        if (d->len >= sizeof(d->buf) - 1) {
+            d->len = 0;     /* not one of ours */
+        }
+    }
+}
+
+static void
+diskstop(bstg_status_disk_t *d)
+{
+    int i;
+
+    if (d->pid > 0) {
+        kill(d->pid, SIGKILL);
+        /*
+         * A helper stuck in an uninterruptible statvfs may not die, and
+         * we must not wait for it. Give a healthy one a moment to go.
+         */
+        for (i = 0; i < 10; i++) {
+            if (waitpid(d->pid, NULL, WNOHANG) != 0) {
+                break;
+            }
+            usleep(10000);
+        }
+    }
+    if (d->fd >= 0) {
+        close(d->fd);
+    }
+    d->pid = d->fd = -1;
+}
+
+/* a helper that has not reported for this long is probably in a hung statvfs */
+#define DISK_STALE_SECS 3
+
+/* df -h, and df -i, of the directory the tests run in */
+static void
+diskline(bstg_status_disk_t *d, FILE *out, time_t now)
+{
+    char s[16], u[16], a[16];
+
+    diskread(d);
+    fprintf(out, "  disk     : %s ", BSTG_BASEDIR);
+    if (d->fd < 0) {
+        fputs("(no disk helper)\n", out);
+        return;
+    }
+    if (!d->have) {
+        fprintf(out, "waiting for statvfs (%ld secs)\n",
+            (long)(now - d->started));
+        return;
+    }
+    if (d->err != 0) {
+        fprintf(out, "unavailable: %s\n", strerror(d->err));
+        return;
+    }
+    human(s, sizeof s, d->size);
+    human(u, sizeof u, d->used);
+    human(a, sizeof a, d->avail);
     /* df's capacity: used / (used + avail), rounded up */
-    fprintf(out, "  disk     : %s  size %s  used %s  avail %s  %d%%",
-        BSTG_BASEDIR, s, u, a, pct(used, used + avail));
-    if (sv.f_files != 0) {
-        fprintf(out, "  inodes %d%%",
-            pct(sv.f_files - sv.f_ffree, sv.f_files));
+    fprintf(out, " size %s  used %s  avail %s  %d%%", s, u, a,
+        pct(d->used, d->used + d->avail));
+    if (d->files != 0) {
+        fprintf(out, "  inodes %d%%", pct(d->files - d->ffree, d->files));
+    }
+    if (now - d->t > DISK_STALE_SECS) {
+        fprintf(out, "  ** statvfs HUNG, figures are %ld secs old **",
+            (long)(now - d->t));
     }
     fputc('\n', out);
 }
@@ -328,7 +491,7 @@ bstg_status_draw(bstg_status_t *st, FILE *out, const char *const names[],
     fprintf(out, "\n  total ops: %" PRIu64 "\n", total);
     fprintf(out, "  ops/sec  : %.0f (now)  %.0f (avg)\n", cur, avg);
     fprintf(out, "  workers  : %u/%u alive\n", alive, st->nchildren);
-    diskline(out);
+    diskline(&st->disk, out, now);
     fprintf(out, "  deaths   : %" PRIu64, st->deaths);
     if (st->lastdeath >= 0) {
         bstg_status_child_t *c = &st->child[st->lastdeath];
@@ -403,6 +566,7 @@ bstg_status_destroy(bstg_status_t *st)
         return 0;
     }
     len = maplen(st->nfuncs, st->nchildren);
+    diskstop(&st->disk);
     st->magic = 0;
     return munmap(st, len);
 }

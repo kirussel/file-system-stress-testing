@@ -166,6 +166,27 @@ typedef struct bstg_status_child_t {
 } __attribute__((aligned(BSTG_STATUS_ALIGN))) bstg_status_child_t;
 
 /*
+ * The disk space of BSTG_BASEDIR, as last reported by the helper process
+ * that calls statvfs(3) for the parent: statvfs can hang on a sick
+ * filesystem, and the dashboard must not hang with it. Parent only.
+ *  pid, fd: the helper and the read end of its pipe (-1 if none)
+ *  t: when the helper last finished a statvfs (CLOCK_MONOTONIC seconds)
+ *  err: errno of that statvfs, 0 if it worked
+ *  buf, len: partial line read from the pipe
+ */
+typedef struct bstg_status_disk_t {
+    pid_t pid;
+    int fd;
+    int have;
+    int err;
+    time_t t;
+    time_t started;
+    u_int64_t size, used, avail, files, ffree;
+    size_t len;
+    char buf[256];
+} bstg_status_disk_t;
+
+/*
  * Counters shared (MAP_SHARED) between the parent and its workers. Times
  * are CLOCK_MONOTONIC seconds.
  *  opcount: [nchildren][stride] ops started, per worker and op; read a
@@ -175,6 +196,7 @@ typedef struct bstg_status_child_t {
  *  deaths: workers that exited
  *  lastdeath: index into child of the most recent death (-1 if none)
  *  prevtotal, prevtime: total and time of the previous draw, for ops/sec
+ *  disk: the disk space helper, see above
  */
 typedef struct bstg_status_t {
     unsigned magic;
@@ -189,6 +211,7 @@ typedef struct bstg_status_t {
     time_t lastdeath_at;
     u_int64_t prevtotal;
     time_t prevtime;
+    bstg_status_disk_t disk;
 } __attribute__((aligned(BSTG_STATUS_ALIGN))) bstg_status_t;
 
 /* allocate the shared counters; call before fork(). The other status
@@ -206,6 +229,10 @@ u_int64_t bstg_status_opcount(bstg_status_t *, unsigned);
 
 /* parent: a worker was reaped by wait(2) */
 void bstg_status_reaped(bstg_status_t *, pid_t, int);
+
+/* parent: nonzero once every worker started has been reaped. The disk
+ * helper never exits by itself, so wait(2) alone does not say. */
+int bstg_status_done(bstg_status_t *);
 
 /* parent: redraw the status screen on a tty (names are the op names) */
 void bstg_status_draw(bstg_status_t *, FILE *, const char *const [],

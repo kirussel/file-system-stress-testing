@@ -150,7 +150,9 @@ main(int argc, char *argv[])
             while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
                 bstg_status_reaped(st, pid, status);
             }
-            if (pid == -1 && errno != EINTR) {
+            /* the disk helper outlives the workers, so wait(2) alone
+             * would never run dry */
+            if (bstg_status_done(st) || (pid == -1 && errno != EINTR)) {
                 break;
             }
             bstg_status_draw(st, stdout, bstg_fembot_names, "brannagh");

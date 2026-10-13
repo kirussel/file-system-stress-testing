@@ -25,3 +25,8 @@ than 10 seconds, and the most frequently run ops.
 
 `-s` cannot be combined with `-v`: verbose output from the workers would
 corrupt the dashboard, so the combination is rejected with a usage error.
+
+The disk line is gathered by a small helper process, because `statvfs(3)` on a
+sick filesystem can hang. If the helper stops reporting for more than a few
+seconds, the dashboard keeps drawing and flags the figures as stale
+(`statvfs HUNG`).
