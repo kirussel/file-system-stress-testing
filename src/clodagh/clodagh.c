@@ -24,6 +24,7 @@
 #include <archive.h>
 #include <archive_entry.h>
 #include <err.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -58,7 +59,7 @@ void
 usage(void)
 {
     fprintf(stderr, "usage: clodagh [-n]\n");
-    fprintf(stderr, "usage: clodagh [-v] archive-file ...\n");
+    fprintf(stderr, "usage: clodagh [-s | -v] archive-file ...\n");
     exit(1);
 }
 
@@ -66,15 +67,20 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-    int ch, nflag, status, x, verbose;
+    int ch, nflag, status, x, verbose, sflag;
     static bstg_funcs_t bfs;
+    bstg_status_t *st;
+    pid_t pid;
     char *buf;
 
-    verbose = nflag = 0;
-    while ((ch = getopt(argc, argv, "nv")) != -1) {
+    verbose = nflag = sflag = 0;
+    while ((ch = getopt(argc, argv, "nsv")) != -1) {
         switch (ch) {
             case 'n':
                 nflag = 1;
+                break;
+            case 's':
+                sflag = 1;
                 break;
             case 'v':
                 verbose = 1;
@@ -85,6 +91,11 @@ main(int argc, char *argv[])
         }
     }
     argv += optind;
+
+    if (sflag && verbose) {
+        warnx("-s and -v are mutually exclusive");
+        usage();
+    }
 
     if (nflag) {
         printf("%lu\n", NFUNCS);
@@ -97,8 +108,19 @@ main(int argc, char *argv[])
 
     buf = BSTGNULLCHECK(malloc(65536));
 
+    /* the dashboard is only for a human at a terminal */
+    if (sflag && !isatty(STDOUT_FILENO)) {
+        warnx("stdout is not a tty: -s ignored");
+        sflag = 0;
+    }
+
+    /* without -s the workers run exactly as before: no counters, blocking wait */
+    st = NULL;
+    if (sflag) {
+        st = BSTGNULLCHECK(bstg_status_init(NFUNCS, 128));
+    }
+
     for (x = 0; x < 128; x++) {
-        pid_t pid;
 
         pid = fork();
         if (pid == 0) {
@@ -151,6 +173,7 @@ main(int argc, char *argv[])
                              * so this cast (unlike a double->unsigned cast) is
                              * well-defined even for a hostile/corrupt archive */
                             id = (unsigned)op->valueint;
+                            bstg_status_op(st, x, id % NFUNCS);
                             (*bstg_fembot_funcs[id % NFUNCS]) (&bfs);
                         }
                         cJSON_Delete(ops);
@@ -166,9 +189,27 @@ main(int argc, char *argv[])
 
             _exit(1);
         }
+        bstg_status_child(st, x, pid);
     }
 
-    while(wait(&status) > 0);
+    if (sflag) {
+        for (;;) {
+            while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+                bstg_status_reaped(st, pid, status);
+            }
+            /* the disk helper outlives the workers, so wait(2) alone
+             * would never run dry */
+            if (bstg_status_done(st) || (pid == -1 && errno != EINTR)) {
+                break;
+            }
+            bstg_status_draw(st, stdout, bstg_fembot_names, "clodagh");
+            sleep(1);
+        }
+        bstg_status_draw(st, stdout, bstg_fembot_names, "clodagh");
+        bstg_status_destroy(st);
+    } else {
+        while(wait(&status) > 0);
+    }
 
     if (bstg_funcs_destroy(&bfs)) {
         errx(1, "cannot destroy bfs");

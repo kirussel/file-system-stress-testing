@@ -25,7 +25,10 @@ LDFLAGS+=-L../lib -lfembot
 .PHONY: all clean check
 
 SRCS=fdstore bstg_fdstore_close bstg_waitpid \
-    funcs flist bstg_signalx bstg_signalj bstg_null_check #pathstore
+    funcs flist bstg_status bstg_signalx bstg_signalj bstg_null_check #pathstore
+
+# unit tests with no source file of their own
+TESTS=$(SRCS) bstg_status_draw
 
 all: libfembot.a
 
@@ -33,14 +36,14 @@ libfembot.a: $(SRCS:%=%.o)
 	$(AR) $(ARFLAGS) $@ $^
 	$(RANLIB) $@
 
-$(SRCS:%=%_test): %_test: %_test.c
+$(TESTS:%=%_test): %_test: %_test.c libfembot.a
 	$(CC) $(CFLAGS) $(BSTG_TAP_CFLAGS) $^ $(LDFLAGS) $(BSTG_TAP_LDFLAGS) -o $@
 
-check: $(SRCS:%=%_test)
+check: $(TESTS:%=%_test)
 	$(PROVE) $(^:%=./%)
 
 clean:
-	$(RM) libfembot.a $(SRCS:%=%.o) $(SRCS:%=%_test)
+	$(RM) libfembot.a $(SRCS:%=%.o) $(TESTS:%=%_test)
 
 LINT_SH=
 include ../inc/lint.mk

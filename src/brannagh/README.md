@@ -14,3 +14,19 @@ DIR=${HOME}/fsstf
 BRANNAGH=${DIR?}/file-system-stress-testing-framework-read-only/src/brannagh
 gmake -C ${BRANNAGH?} check
 ```
+
+## Dashboard
+
+Run `./brannagh -s` to get a live dashboard on a tty. It shows
+run time, total ops and ops/sec, how many workers are alive, the last worker to
+die (with its signal and the op it was in), disk space and inode use of the
+test directory (like `df -h`), workers stuck in one op for more
+than 10 seconds, and the most frequently run ops.
+
+`-s` cannot be combined with `-v`: verbose output from the workers would
+corrupt the dashboard, so the combination is rejected with a usage error.
+
+The disk line is gathered by a small helper process, because `statvfs(3)` on a
+sick filesystem can hang. If the helper stops reporting for more than a few
+seconds, the dashboard keeps drawing and flags the figures as stale
+(`statvfs HUNG`).

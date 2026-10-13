@@ -18,8 +18,11 @@
  * $Id$
  */
 
+#include <stdio.h>
+#include <time.h>
 #include <unistd.h>
 #include <setjmp.h>
+#include <sys/types.h>
 #include <sys/select.h>
 #include <sys/uio.h>
 
@@ -135,6 +138,108 @@ int bstg_flist_get(bstg_flist_t *, u_int32_t);
 
 /* use a string of , separated numbers to init the list of ints */
 int bstg_flist_import(bstg_flist_t *, char *);
+
+
+/* magic value to determine if data has been initialized */
+#ifndef BSTG_STATUS_MAGIC
+#define BSTG_STATUS_MAGIC   ((unsigned)(~0x57a70001))
+#endif
+
+/* keep each worker's state on its own cache lines */
+#define BSTG_STATUS_ALIGN   64
+
+/*
+ * One worker, as seen by the parent's status screen. Only the worker
+ * writes lastop, lastop_at and its row of opcount; only the parent writes
+ * the rest.
+ *  lastop: the op the worker most recently started (-1 if none)
+ *  lastop_at: when that op was started (CLOCK_MONOTONIC milliseconds)
+ *  dead: set by the parent once the worker has been reaped
+ *  wstatus: wait(2) status of a dead worker
+ */
+typedef struct bstg_status_child_t {
+    pid_t pid;
+    int lastop;
+    int64_t lastop_at;
+    int dead;
+    int wstatus;
+} __attribute__((aligned(BSTG_STATUS_ALIGN))) bstg_status_child_t;
+
+/*
+ * The disk space of BSTG_BASEDIR, as last reported by the helper process
+ * that calls statvfs(3) for the parent: statvfs can hang on a sick
+ * filesystem, and the dashboard must not hang with it. Parent only.
+ *  pid, fd: the helper and the read end of its pipe (-1 if none)
+ *  t: when the helper last finished a statvfs (CLOCK_MONOTONIC seconds)
+ *  err: errno of that statvfs, 0 if it worked
+ *  buf, len: partial line read from the pipe
+ */
+typedef struct bstg_status_disk_t {
+    pid_t pid;
+    int fd;
+    int have;
+    int err;
+    time_t t;
+    time_t started;
+    u_int64_t size, used, avail, files, ffree;
+    size_t len;
+    char buf[256];
+} bstg_status_disk_t;
+
+/*
+ * Counters shared (MAP_SHARED) between the parent and its workers. Times
+ * are CLOCK_MONOTONIC milliseconds (disk.t and disk.started: seconds).
+ *  opcount: [nchildren][stride] ops started, per worker and op; read a
+ *      column sum with bstg_status_opcount() (stride >= nfuncs, padded so
+ *      that workers do not share cache lines)
+ *  child: [nchildren] per worker state
+ *  deaths: workers that exited
+ *  lastdeath: index into child of the most recent death (-1 if none)
+ *  prevtotal, prevtime: total and time of the previous draw, for ops/sec
+ *  disk: the disk space helper, see above
+ */
+typedef struct bstg_status_t {
+    unsigned magic;
+    unsigned nfuncs;
+    unsigned nchildren;
+    unsigned stride;
+    int64_t start;
+    u_int64_t *opcount;
+    bstg_status_child_t *child;
+    u_int64_t deaths;
+    int lastdeath;
+    int64_t lastdeath_at;
+    u_int64_t prevtotal;
+    int64_t prevtime;
+    bstg_status_disk_t disk;
+} __attribute__((aligned(BSTG_STATUS_ALIGN))) bstg_status_t;
+
+/* allocate the shared counters; call before fork(). The other status
+ * functions accept a NULL status and do nothing. */
+bstg_status_t *bstg_status_init(unsigned, unsigned);
+
+/* parent: remember the pid of worker idx */
+void bstg_status_child(bstg_status_t *, unsigned, pid_t);
+
+/* worker idx: about to run op f */
+void bstg_status_op(bstg_status_t *, unsigned, unsigned);
+
+/* total number of times op f was started, over all workers */
+u_int64_t bstg_status_opcount(bstg_status_t *, unsigned);
+
+/* parent: a worker was reaped by wait(2) */
+void bstg_status_reaped(bstg_status_t *, pid_t, int);
+
+/* parent: nonzero once every worker started has been reaped. The disk
+ * helper never exits by itself, so wait(2) alone does not say. */
+int bstg_status_done(bstg_status_t *);
+
+/* parent: redraw the status screen on a tty (names are the op names) */
+void bstg_status_draw(bstg_status_t *, FILE *, const char *const [],
+    const char *);
+
+/* release the shared counters */
+int bstg_status_destroy(bstg_status_t *);
 
 
 /* waitpid() but with timeout (quarter seconds) */

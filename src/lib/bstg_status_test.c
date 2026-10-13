@@ -1,0 +1,209 @@
+/*
+ * Copyright 2026 The file-system-stress-testing Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#define NDEBUG
+#include "fembot.h"
+#include "tap.h"
+
+#include <signal.h>
+#include <stdlib.h>
+#include <time.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/cdefs.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
+#include "bstg.h"
+
+__RCSID("$Id$");
+
+#define NCHILD  4
+#define NOPS    1000
+#define NFUNCS  3
+
+static const char *const names[NFUNCS] = { "a/one", "b/two", "c/three" };
+
+static int64_t
+monoms(void)
+{
+    struct timespec ts;
+
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
+int
+main()
+{
+    bstg_status_t *st;
+    pid_t pid[NCHILD + 1];
+    unsigned i, x;
+    double rate;
+    char *p;
+    u_int64_t sum;
+    int status;
+    FILE *out;
+    char buf[8192];
+
+    plan_tests(19);
+
+    st = bstg_status_init(NFUNCS, NCHILD + 1);
+    ok(st != NULL, "init");
+    if (st == NULL) {
+        return 1;
+    }
+
+    for (i = 0; i < NCHILD; i++) {
+        pid[i] = fork();
+        if (pid[i] == 0) {
+            for (x = 0; x < NOPS; x++) {
+                bstg_status_op(st, i, x % NFUNCS);
+            }
+            _exit(0);
+        }
+        bstg_status_child(st, i, pid[i]);
+    }
+
+    /* one more worker that dies inside op 2 */
+    pid[NCHILD] = fork();
+    if (pid[NCHILD] == 0) {
+        bstg_status_op(st, NCHILD, 2);
+        raise(SIGKILL);
+        _exit(0);
+    }
+    bstg_status_child(st, NCHILD, pid[NCHILD]);
+
+    for (i = 0; i < NCHILD + 1; i++) {
+        pid_t p = wait(&status);
+
+        bstg_status_reaped(st, p, status);
+    }
+
+    sum = 0;
+    for (i = 0; i < NFUNCS; i++) {
+        sum += bstg_status_opcount(st, i);
+    }
+    ok(sum == NCHILD * NOPS + 1, "per op counts sum to total");
+    ok(bstg_status_opcount(st, 2) >= NCHILD * (NOPS / NFUNCS) + 1,
+        "op 2 counted");
+    ok(bstg_status_opcount(st, NFUNCS) == 0, "unknown op counts nothing");
+    ok(st->deaths == NCHILD + 1, "deaths");
+    ok(bstg_status_done(st), "done when every worker is reaped");
+    ok(st->lastdeath >= 0, "lastdeath set");
+    ok(st->child[NCHILD].dead && st->child[NCHILD].lastop == 2 &&
+        WIFSIGNALED(st->child[NCHILD].wstatus) &&
+        WTERMSIG(st->child[NCHILD].wstatus) == SIGKILL,
+        "killed worker's op and signal recorded");
+
+    /* reap of an unknown pid is ignored */
+    bstg_status_reaped(st, 1, 0);
+    ok(st->deaths == NCHILD + 1, "unknown pid ignored");
+
+    /* the helper reports within a second or so; draw until it has */
+    for (i = 0; i < 50; i++) {
+        memset(buf, 0, sizeof buf);
+        out = fmemopen(buf, sizeof buf, "w");
+        if (out != NULL) {
+            bstg_status_draw(st, out, names, "test");
+            fclose(out);
+        }
+        if (strstr(buf, "waiting for statvfs") == NULL) {
+            break;
+        }
+        usleep(100000);
+    }
+    ok(strstr(buf, "a/one") != NULL && strstr(buf, "deaths") != NULL,
+        "draw");
+    ok(strstr(buf, "disk     : " BSTG_BASEDIR) != NULL &&
+        (strstr(buf, " size ") != NULL || strstr(buf, "unavailable") != NULL),
+        "disk line from the helper");
+
+    /* a statvfs that never returns: the helper goes quiet, figures age */
+    ok(st->disk.pid > 0 && kill(st->disk.pid, SIGSTOP) == 0 &&
+        waitpid(st->disk.pid, &status, WUNTRACED) == st->disk.pid &&
+        WIFSTOPPED(status), "stop helper");
+    /*
+     * The helper may have reported just before it stopped: take that
+     * line now, or the draw below would overwrite the aged figures.
+     */
+    memset(buf, 0, sizeof buf);
+    out = fmemopen(buf, sizeof buf, "w");
+    if (out != NULL) {
+        bstg_status_draw(st, out, names, "test");
+        fclose(out);
+    }
+    st->disk.t -= 30;
+    st->disk.err = 0;
+    memset(buf, 0, sizeof buf);
+    out = fmemopen(buf, sizeof buf, "w");
+    if (out != NULL) {
+        bstg_status_draw(st, out, names, "test");
+        fclose(out);
+    }
+    ok(strstr(buf, "statvfs HUNG") != NULL, "hung statvfs shown");
+    kill(st->disk.pid, SIGCONT);
+
+    /*
+     * ops/sec over a sub-second interval: 400 ops in the ~400 ms since
+     * the previous draw is about 1000/s, not a whole-second guess
+     */
+    st->start = monoms() - 100000;
+    st->prevtotal = bstg_status_opcount(st, 0) + bstg_status_opcount(st, 1) +
+        bstg_status_opcount(st, 2);
+    st->prevtime = monoms() - 400;
+    for (x = 0; x < 400; x++) {
+        bstg_status_op(st, 0, 0);
+    }
+    memset(buf, 0, sizeof buf);
+    out = fmemopen(buf, sizeof buf, "w");
+    if (out != NULL) {
+        bstg_status_draw(st, out, names, "test");
+        fclose(out);
+    }
+    p = strstr(buf, "ops/sec  : ");
+    rate = p != NULL ? atof(p + strlen("ops/sec  : ")) : 0;
+    ok(rate >= 500 && rate <= 1100, "ops/sec over a short interval");
+
+    /* a corrupt lastop must not index past the names, nor repaint wrongly */
+    st->child[0].lastop = NFUNCS + 5;
+    st->lastdeath = 0;
+    memset(buf, 0, sizeof buf);
+    out = fmemopen(buf, sizeof buf, "w");
+    if (out != NULL) {
+        bstg_status_draw(st, out, names, "test");
+        fclose(out);
+    }
+    ok(strstr(buf, "(unknown)") != NULL, "out of range lastop");
+    ok(strncmp(buf, "\033[H", 3) == 0 && strstr(buf, "\033[2J") == NULL,
+        "repaints in place");
+    ok(strstr(buf, "\033[?7l") != NULL &&
+        strstr(buf, "\033[?7h") > strstr(buf, "\033[?7l"),
+        "line wrap off while painting, back on after");
+
+    /* a failed fork() is not a worker */
+    bstg_status_child(st, 0, -1);
+    ok(st->child[0].pid == pid[0], "bad pid ignored");
+
+    /* without -s the callers pass a NULL status */
+    bstg_status_child(NULL, 0, 1);
+    bstg_status_op(NULL, 0, 0);
+    bstg_status_reaped(NULL, 1, 0);
+    bstg_status_draw(NULL, stdout, names, "test");
+    ok(bstg_status_destroy(NULL) == 0, "NULL status is a no-op");
+
+    bstg_status_destroy(st);
+    return 0;
+}

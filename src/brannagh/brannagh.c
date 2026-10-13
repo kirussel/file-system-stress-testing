@@ -19,6 +19,7 @@
 
 #include "fembot.h"
 #include <err.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -50,7 +51,7 @@ void
 usage(void)
 {
     fprintf(stderr, "usage: brannagh [-n]\n");
-    fprintf(stderr, "usage: brannagh [-f 0-%lu]\n", NFUNCS);
+    fprintf(stderr, "usage: brannagh [-s | -v] [-f 0-%lu]\n", NFUNCS);
     exit(1);
 }
 
@@ -58,13 +59,16 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-    int ch, nflag, farg, status, x, verbose;
+    int ch, nflag, farg, status, x, verbose, sflag;
     static bstg_funcs_t bfs;
+    bstg_status_t *st;
+    pid_t pid;
 
     nflag = 0;
     farg = -1;
     verbose = 0;
-    while ((ch = getopt(argc, argv, "f:nv")) != -1) {
+    sflag = 0;
+    while ((ch = getopt(argc, argv, "f:nsv")) != -1) {
         char *p;
 
         switch (ch) {
@@ -77,6 +81,9 @@ main(int argc, char *argv[])
             case 'n':
                 nflag = 1;
                 break;
+            case 's':
+                sflag = 1;
+                break;
             case 'v':
                 verbose = 1;
                 break;
@@ -84,6 +91,11 @@ main(int argc, char *argv[])
             default:
                 usage();
         }
+    }
+
+    if (sflag && verbose) {
+        warnx("-s and -v are mutually exclusive");
+        usage();
     }
 
     if (nflag) {
@@ -99,9 +111,20 @@ main(int argc, char *argv[])
         errx(1, "cannot init bfs");
     }
 
+    /* the dashboard is only for a human at a terminal */
+    if (sflag && !isatty(STDOUT_FILENO)) {
+        warnx("stdout is not a tty: -s ignored");
+        sflag = 0;
+    }
+
+    /* without -s the workers run exactly as before: no counters, blocking wait */
+    st = NULL;
+    if (sflag) {
+        st = BSTGNULLCHECK(bstg_status_init(NFUNCS, 37));
+    }
+
     for (x = 0; x < 37; x++) {
         int func = 0;
-        pid_t pid;
 
         pid = fork();
         if (pid == 0) {
@@ -109,6 +132,7 @@ main(int argc, char *argv[])
             func = x;
 
             for (;;) {
+                bstg_status_op(st, x, func % NFUNCS);
                 (*bstg_fembot_funcs[func++ % NFUNCS]) (&bfs);
             }
 
@@ -118,9 +142,27 @@ main(int argc, char *argv[])
 
             _exit(1);
         }
+        bstg_status_child(st, x, pid);
     }
 
-    while(wait(&status) > 0);
+    if (sflag) {
+        for (;;) {
+            while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+                bstg_status_reaped(st, pid, status);
+            }
+            /* the disk helper outlives the workers, so wait(2) alone
+             * would never run dry */
+            if (bstg_status_done(st) || (pid == -1 && errno != EINTR)) {
+                break;
+            }
+            bstg_status_draw(st, stdout, bstg_fembot_names, "brannagh");
+            sleep(1);
+        }
+        bstg_status_draw(st, stdout, bstg_fembot_names, "brannagh");
+        bstg_status_destroy(st);
+    } else {
+        while(wait(&status) > 0);
+    }
 
     if (bstg_funcs_destroy(&bfs)) {
         errx(1, "cannot destroy bfs");
