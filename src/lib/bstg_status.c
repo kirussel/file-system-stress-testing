@@ -21,6 +21,7 @@
 #include <sys/cdefs.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
+#include <time.h>
 
 #include "fembot.h"
 #include "bstg.h"
@@ -35,9 +36,37 @@ __RCSID("$Id$");
 #define STALL_SECS  10
 #define TOP_OPS     15
 
-#define ADD(__p, __n)   __atomic_fetch_add((__p), (__n), __ATOMIC_RELAXED)
 #define LOAD(__p)       __atomic_load_n((__p), __ATOMIC_RELAXED)
 #define STORE(__p, __v) __atomic_store_n((__p), (__v), __ATOMIC_RELAXED)
+
+/*
+ * Seconds from a clock that does not jump when the wall clock is set,
+ * so stall times and rates stay sane.
+ */
+static time_t
+now_secs(void)
+{
+    struct timespec ts;
+
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec;
+}
+
+/* opcount rows are padded to whole cache lines */
+static unsigned
+rowstride(unsigned nfuncs)
+{
+    unsigned per = BSTG_STATUS_ALIGN / sizeof(u_int64_t);
+
+    return (nfuncs + per - 1) / per * per;
+}
+
+static size_t
+maplen(unsigned nfuncs, unsigned nchildren)
+{
+    return sizeof(bstg_status_t) + nchildren * sizeof(bstg_status_child_t) +
+        (size_t)nchildren * rowstride(nfuncs) * sizeof(u_int64_t);
+}
 
 /*
  * Allocate the counters in an anonymous shared mapping, so that workers
@@ -53,8 +82,7 @@ bstg_status_init(unsigned nfuncs, unsigned nchildren)
     size_t len;
     unsigned i;
 
-    len = sizeof(*st) + nfuncs * sizeof(*st->opcount) +
-        nchildren * sizeof(*st->child);
+    len = maplen(nfuncs, nchildren);
     st = mmap(NULL, len, PROT_READ|PROT_WRITE, MAP_ANON|MAP_SHARED, -1, 0);
     if (st == MAP_FAILED) {
         return NULL;
@@ -64,9 +92,10 @@ bstg_status_init(unsigned nfuncs, unsigned nchildren)
     st->magic = BSTG_STATUS_MAGIC;
     st->nfuncs = nfuncs;
     st->nchildren = nchildren;
-    st->start = time(NULL);
-    st->opcount = (u_int64_t *)(st + 1);
-    st->child = (bstg_status_child_t *)(st->opcount + nfuncs);
+    st->stride = rowstride(nfuncs);
+    st->start = now_secs();
+    st->child = (bstg_status_child_t *)(st + 1);
+    st->opcount = (u_int64_t *)(st->child + nchildren);
     st->lastdeath = -1;
     for (i = 0; i < nchildren; i++) {
         st->child[i].lastop = -1;
@@ -91,14 +120,33 @@ bstg_status_child(bstg_status_t *st, unsigned idx, pid_t pid)
 void
 bstg_status_op(bstg_status_t *st, unsigned idx, unsigned f)
 {
+    u_int64_t *p;
+
     if (st == NULL || st->magic != BSTG_STATUS_MAGIC ||
             idx >= st->nchildren || f >= st->nfuncs) {
         return;
     }
-    STORE(&st->child[idx].lastop_at, time(NULL));
+    /* only this worker writes its counters: no atomic read-modify-write */
+    p = &st->opcount[(size_t)idx * st->stride + f];
+    STORE(&st->child[idx].lastop_at, now_secs());
     STORE(&st->child[idx].lastop, (int)f);
-    ADD(&st->opcount[f], 1);
-    ADD(&st->total, 1);
+    STORE(p, LOAD(p) + 1);
+}
+
+u_int64_t
+bstg_status_opcount(bstg_status_t *st, unsigned f)
+{
+    u_int64_t n;
+    unsigned i;
+
+    if (st == NULL || st->magic != BSTG_STATUS_MAGIC || f >= st->nfuncs) {
+        return 0;
+    }
+    n = 0;
+    for (i = 0; i < st->nchildren; i++) {
+        n += LOAD(&st->opcount[(size_t)i * st->stride + f]);
+    }
+    return n;
 }
 
 void
@@ -115,16 +163,20 @@ bstg_status_reaped(bstg_status_t *st, pid_t pid, int wstatus)
             st->child[i].wstatus = wstatus;
             st->deaths++;
             st->lastdeath = (int)i;
-            st->lastdeath_at = time(NULL);
+            st->lastdeath_at = now_secs();
             return;
         }
     }
 }
 
+/* lastop is written by a worker, so do not trust it as an index */
 static const char *
-opname(const char *const names[], int op)
+opname(bstg_status_t *st, const char *const names[], int op)
 {
-    return op < 0 ? "(none)" : names[op];
+    if (op < 0) {
+        return "(none)";
+    }
+    return (unsigned)op < st->nfuncs ? names[op] : "(unknown)";
 }
 
 static void
@@ -150,11 +202,13 @@ void
 bstg_status_draw(bstg_status_t *st, FILE *out, const char *const names[],
     const char *tool)
 {
-    static u_int64_t prevtotal;
-    static time_t prevtime;
     unsigned i, alive, nstalled, *order;
+    FILE *real;
     u_int64_t total, *snap;
     time_t now;
+    char *buf, *p;
+    size_t buflen;
+    FILE *mem;
     double avg, cur;
 
     if (st == NULL || st->magic != BSTG_STATUS_MAGIC) {
@@ -174,17 +228,17 @@ bstg_status_draw(bstg_status_t *st, FILE *out, const char *const names[],
     }
     total = 0;
     for (i = 0; i < st->nfuncs; i++) {
-        snap[i] = LOAD(&st->opcount[i]);
+        snap[i] = bstg_status_opcount(st, i);
         total += snap[i];
         order[i] = i;
     }
 
-    now = time(NULL);
+    now = now_secs();
     avg = now > st->start ? (double)total / (now - st->start) : 0;
-    cur = prevtime && now > prevtime ?
-        (double)(total - prevtotal) / (now - prevtime) : avg;
-    prevtotal = total;
-    prevtime = now;
+    cur = st->prevtime && now > st->prevtime ?
+        (double)(total - st->prevtotal) / (now - st->prevtime) : avg;
+    st->prevtotal = total;
+    st->prevtime = now;
 
     alive = 0;
     for (i = 0; i < st->nchildren; i++) {
@@ -193,8 +247,20 @@ bstg_status_draw(bstg_status_t *st, FILE *out, const char *const names[],
         }
     }
 
-    /* home the cursor and clear the screen */
-    fputs("\033[H\033[2J", out);
+    /*
+     * Render the frame to memory first, then repaint in place: home the
+     * cursor, erase each line's old tail as it is rewritten and erase
+     * whatever is left below. Clearing the screen first would flicker.
+     */
+    buf = NULL;
+    mem = open_memstream(&buf, &buflen);
+    if (mem == NULL) {
+        free(order);
+        free(snap);
+        return;
+    }
+    real = out;
+    out = mem;
     fprintf(out, " %s (fsst) ----------------------------------------\n",
         tool);
     fputs("  run time : ", out);
@@ -212,7 +278,7 @@ bstg_status_draw(bstg_status_t *st, FILE *out, const char *const names[],
         } else {
             fprintf(out, "exit %d", WEXITSTATUS(c->wstatus));
         }
-        fprintf(out, " in %s (%ld secs ago)", opname(names, c->lastop),
+        fprintf(out, " in %s (%ld secs ago)", opname(st, names, c->lastop),
             (long)(now - st->lastdeath_at));
     }
     fputc('\n', out);
@@ -230,7 +296,7 @@ bstg_status_draw(bstg_status_t *st, FILE *out, const char *const names[],
             /* keep a hung box readable */
             if (nstalled++ < 10) {
                 fprintf(out, "  pid %ld in %s for %ld secs\n", (long)c->pid,
-                    opname(names, op), (long)(now - at));
+                    opname(st, names, op), (long)(now - at));
             }
         }
     }
@@ -253,7 +319,18 @@ bstg_status_draw(bstg_status_t *st, FILE *out, const char *const names[],
     }
     free(order);
     free(snap);
-    fflush(out);
+
+    fclose(mem);
+    fputs("\033[H", real);
+    for (p = buf; *p != '\0'; p++) {
+        if (*p == '\n') {
+            fputs("\033[K", real);
+        }
+        fputc(*p, real);
+    }
+    fputs("\033[J", real);
+    fflush(real);
+    free(buf);
 }
 
 int
@@ -264,8 +341,7 @@ bstg_status_destroy(bstg_status_t *st)
     if (st == NULL || st->magic != BSTG_STATUS_MAGIC) {
         return 0;
     }
-    len = sizeof(*st) + st->nfuncs * sizeof(*st->opcount) +
-        st->nchildren * sizeof(*st->child);
+    len = maplen(st->nfuncs, st->nchildren);
     st->magic = 0;
     return munmap(st, len);
 }

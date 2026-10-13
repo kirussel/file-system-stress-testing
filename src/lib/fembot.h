@@ -145,10 +145,15 @@ int bstg_flist_import(bstg_flist_t *, char *);
 #define BSTG_STATUS_MAGIC   ((unsigned)(~0x57a70001))
 #endif
 
+/* keep each worker's state on its own cache lines */
+#define BSTG_STATUS_ALIGN   64
+
 /*
- * One worker, as seen by the parent's status screen.
+ * One worker, as seen by the parent's status screen. Only the worker
+ * writes lastop, lastop_at and its row of opcount; only the parent writes
+ * the rest.
  *  lastop: the op the worker most recently started (-1 if none)
- *  lastop_at: when that op was started
+ *  lastop_at: when that op was started (CLOCK_MONOTONIC seconds)
  *  dead: set by the parent once the worker has been reaped
  *  wstatus: wait(2) status of a dead worker
  */
@@ -158,28 +163,33 @@ typedef struct bstg_status_child_t {
     time_t lastop_at;
     int dead;
     int wstatus;
-} bstg_status_child_t;
+} __attribute__((aligned(BSTG_STATUS_ALIGN))) bstg_status_child_t;
 
 /*
- * Counters shared (MAP_SHARED) between the parent and its workers.
- *  total: ops started by all workers
- *  opcount: [nfuncs] ops started, per op
+ * Counters shared (MAP_SHARED) between the parent and its workers. Times
+ * are CLOCK_MONOTONIC seconds.
+ *  opcount: [nchildren][stride] ops started, per worker and op; read a
+ *      column sum with bstg_status_opcount() (stride >= nfuncs, padded so
+ *      that workers do not share cache lines)
  *  child: [nchildren] per worker state
  *  deaths: workers that exited
  *  lastdeath: index into child of the most recent death (-1 if none)
+ *  prevtotal, prevtime: total and time of the previous draw, for ops/sec
  */
 typedef struct bstg_status_t {
     unsigned magic;
     unsigned nfuncs;
     unsigned nchildren;
+    unsigned stride;
     time_t start;
-    u_int64_t total;
     u_int64_t *opcount;
     bstg_status_child_t *child;
     u_int64_t deaths;
     int lastdeath;
     time_t lastdeath_at;
-} bstg_status_t;
+    u_int64_t prevtotal;
+    time_t prevtime;
+} __attribute__((aligned(BSTG_STATUS_ALIGN))) bstg_status_t;
 
 /* allocate the shared counters; call before fork(). The other status
  * functions accept a NULL status and do nothing. */
@@ -190,6 +200,9 @@ void bstg_status_child(bstg_status_t *, unsigned, pid_t);
 
 /* worker idx: about to run op f */
 void bstg_status_op(bstg_status_t *, unsigned, unsigned);
+
+/* total number of times op f was started, over all workers */
+u_int64_t bstg_status_opcount(bstg_status_t *, unsigned);
 
 /* parent: a worker was reaped by wait(2) */
 void bstg_status_reaped(bstg_status_t *, pid_t, int);

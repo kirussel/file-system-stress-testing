@@ -44,7 +44,7 @@ main()
     FILE *out;
     char buf[8192];
 
-    plan_tests(11);
+    plan_tests(13);
 
     st = bstg_status_init(NFUNCS, NCHILD + 1);
     ok(st != NULL, "init");
@@ -78,13 +78,14 @@ main()
         bstg_status_reaped(st, p, status);
     }
 
-    ok(st->total == NCHILD * NOPS + 1, "total");
     sum = 0;
     for (i = 0; i < NFUNCS; i++) {
-        sum += st->opcount[i];
+        sum += bstg_status_opcount(st, i);
     }
-    ok(sum == st->total, "per op counts sum to total");
-    ok(st->opcount[2] >= NCHILD * (NOPS / NFUNCS) + 1, "op 2 counted");
+    ok(sum == NCHILD * NOPS + 1, "per op counts sum to total");
+    ok(bstg_status_opcount(st, 2) >= NCHILD * (NOPS / NFUNCS) + 1,
+        "op 2 counted");
+    ok(bstg_status_opcount(st, NFUNCS) == 0, "unknown op counts nothing");
     ok(st->deaths == NCHILD + 1, "deaths");
     ok(st->lastdeath >= 0, "lastdeath set");
     ok(st->child[NCHILD].dead && st->child[NCHILD].lastop == 2 &&
@@ -104,6 +105,19 @@ main()
     }
     ok(strstr(buf, "a/one") != NULL && strstr(buf, "deaths") != NULL,
         "draw");
+
+    /* a corrupt lastop must not index past the names, nor repaint wrongly */
+    st->child[0].lastop = NFUNCS + 5;
+    st->lastdeath = 0;
+    memset(buf, 0, sizeof buf);
+    out = fmemopen(buf, sizeof buf, "w");
+    if (out != NULL) {
+        bstg_status_draw(st, out, names, "test");
+        fclose(out);
+    }
+    ok(strstr(buf, "(unknown)") != NULL, "out of range lastop");
+    ok(strncmp(buf, "\033[H", 3) == 0 && strstr(buf, "\033[2J") == NULL,
+        "repaints in place");
 
     /* a failed fork() is not a worker */
     bstg_status_child(st, 0, -1);
