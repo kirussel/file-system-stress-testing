@@ -51,6 +51,16 @@ mono(void)
     return ts.tv_sec;
 }
 
+/* lastop_at is in milliseconds */
+static int64_t
+monoms(void)
+{
+    struct timespec ts;
+
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
 static char *
 draw(bstg_status_t *st, char *buf, size_t len)
 {
@@ -157,7 +167,7 @@ main()
     bstg_status_child(st, 2, 4243);
     bstg_status_op(st, 1, 1);
     bstg_status_op(st, 2, 2);
-    st->child[1].lastop_at = mono() - 60;
+    st->child[1].lastop_at = monoms() - 60000;
     draw(st, buf, sizeof buf);
     ok(strstr(buf, "pid 4242 in b/two for ") != NULL, "stalled worker listed");
     ok(strstr(buf, "pid 4243 in") == NULL, "busy worker not listed");
@@ -169,7 +179,7 @@ main()
     for (i = 0; st != NULL && i < 14; i++) {
         bstg_status_child(st, i, 5000 + i);
         bstg_status_op(st, i, 0);
-        st->child[i].lastop_at = mono() - 60;
+        st->child[i].lastop_at = monoms() - 60000;
     }
     draw(st, buf, sizeof buf);
     ok(strstr(buf, "pid 5009 in a/one") != NULL &&

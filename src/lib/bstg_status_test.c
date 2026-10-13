@@ -18,6 +18,8 @@
 #include "tap.h"
 
 #include <signal.h>
+#include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/cdefs.h>
@@ -34,18 +36,29 @@ __RCSID("$Id$");
 
 static const char *const names[NFUNCS] = { "a/one", "b/two", "c/three" };
 
+static int64_t
+monoms(void)
+{
+    struct timespec ts;
+
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
 int
 main()
 {
     bstg_status_t *st;
     pid_t pid[NCHILD + 1];
     unsigned i, x;
+    double rate;
+    char *p;
     u_int64_t sum;
     int status;
     FILE *out;
     char buf[8192];
 
-    plan_tests(17);
+    plan_tests(19);
 
     st = bstg_status_init(NFUNCS, NCHILD + 1);
     ok(st != NULL, "init");
@@ -119,7 +132,19 @@ main()
         "disk line from the helper");
 
     /* a statvfs that never returns: the helper goes quiet, figures age */
-    ok(st->disk.pid > 0 && kill(st->disk.pid, SIGSTOP) == 0, "stop helper");
+    ok(st->disk.pid > 0 && kill(st->disk.pid, SIGSTOP) == 0 &&
+        waitpid(st->disk.pid, &status, WUNTRACED) == st->disk.pid &&
+        WIFSTOPPED(status), "stop helper");
+    /*
+     * The helper may have reported just before it stopped: take that
+     * line now, or the draw below would overwrite the aged figures.
+     */
+    memset(buf, 0, sizeof buf);
+    out = fmemopen(buf, sizeof buf, "w");
+    if (out != NULL) {
+        bstg_status_draw(st, out, names, "test");
+        fclose(out);
+    }
     st->disk.t -= 30;
     st->disk.err = 0;
     memset(buf, 0, sizeof buf);
@@ -130,6 +155,27 @@ main()
     }
     ok(strstr(buf, "statvfs HUNG") != NULL, "hung statvfs shown");
     kill(st->disk.pid, SIGCONT);
+
+    /*
+     * ops/sec over a sub-second interval: 400 ops in the ~400 ms since
+     * the previous draw is about 1000/s, not a whole-second guess
+     */
+    st->start = monoms() - 100000;
+    st->prevtotal = bstg_status_opcount(st, 0) + bstg_status_opcount(st, 1) +
+        bstg_status_opcount(st, 2);
+    st->prevtime = monoms() - 400;
+    for (x = 0; x < 400; x++) {
+        bstg_status_op(st, 0, 0);
+    }
+    memset(buf, 0, sizeof buf);
+    out = fmemopen(buf, sizeof buf, "w");
+    if (out != NULL) {
+        bstg_status_draw(st, out, names, "test");
+        fclose(out);
+    }
+    p = strstr(buf, "ops/sec  : ");
+    rate = p != NULL ? atof(p + strlen("ops/sec  : ")) : 0;
+    ok(rate >= 500 && rate <= 1100, "ops/sec over a short interval");
 
     /* a corrupt lastop must not index past the names, nor repaint wrongly */
     st->child[0].lastop = NFUNCS + 5;
@@ -143,6 +189,9 @@ main()
     ok(strstr(buf, "(unknown)") != NULL, "out of range lastop");
     ok(strncmp(buf, "\033[H", 3) == 0 && strstr(buf, "\033[2J") == NULL,
         "repaints in place");
+    ok(strstr(buf, "\033[?7l") != NULL &&
+        strstr(buf, "\033[?7h") > strstr(buf, "\033[?7l"),
+        "line wrap off while painting, back on after");
 
     /* a failed fork() is not a worker */
     bstg_status_child(st, 0, -1);

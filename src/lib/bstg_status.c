@@ -47,13 +47,20 @@ __RCSID("$Id$");
  * Seconds from a clock that does not jump when the wall clock is set,
  * so stall times and rates stay sane.
  */
-static time_t
-now_secs(void)
+static int64_t
+now_ms(void)
 {
     struct timespec ts;
 
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return ts.tv_sec;
+    return (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
+/* whole seconds, for the disk helper's reports */
+static time_t
+now_secs(void)
+{
+    return (time_t)(now_ms() / 1000);
 }
 
 /* opcount rows are padded to whole cache lines */
@@ -99,7 +106,7 @@ bstg_status_init(unsigned nfuncs, unsigned nchildren)
     st->nfuncs = nfuncs;
     st->nchildren = nchildren;
     st->stride = rowstride(nfuncs);
-    st->start = now_secs();
+    st->start = now_ms();
     st->child = (bstg_status_child_t *)(st + 1);
     st->opcount = (u_int64_t *)(st->child + nchildren);
     st->lastdeath = -1;
@@ -149,7 +156,7 @@ bstg_status_op(bstg_status_t *st, unsigned idx, unsigned f)
     }
     /* only this worker writes its counters: no atomic read-modify-write */
     p = &st->opcount[(size_t)idx * st->stride + f];
-    STORE(&st->child[idx].lastop_at, now_secs());
+    STORE(&st->child[idx].lastop_at, now_ms());
     STORE(&st->child[idx].lastop, (int)f);
     STORE(p, LOAD(p) + 1);
 }
@@ -184,7 +191,7 @@ bstg_status_reaped(bstg_status_t *st, pid_t pid, int wstatus)
             st->child[i].wstatus = wstatus;
             st->deaths++;
             st->lastdeath = (int)i;
-            st->lastdeath_at = now_secs();
+            st->lastdeath_at = now_ms();
             return;
         }
     }
@@ -428,7 +435,7 @@ bstg_status_draw(bstg_status_t *st, FILE *out, const char *const names[],
     unsigned i, alive, nstalled, *order;
     FILE *real;
     u_int64_t total, *snap;
-    time_t now;
+    int64_t now;
     char *buf, *p;
     size_t buflen;
     FILE *mem;
@@ -456,10 +463,11 @@ bstg_status_draw(bstg_status_t *st, FILE *out, const char *const names[],
         order[i] = i;
     }
 
-    now = now_secs();
-    avg = now > st->start ? (double)total / (now - st->start) : 0;
+    /* milliseconds: whole seconds would skew the rate of a short interval */
+    now = now_ms();
+    avg = now > st->start ? 1000.0 * total / (now - st->start) : 0;
     cur = st->prevtime && now > st->prevtime ?
-        (double)(total - st->prevtotal) / (now - st->prevtime) : avg;
+        1000.0 * (total - st->prevtotal) / (now - st->prevtime) : avg;
     st->prevtotal = total;
     st->prevtime = now;
 
@@ -487,11 +495,11 @@ bstg_status_draw(bstg_status_t *st, FILE *out, const char *const names[],
     fprintf(out, " %s (fsst) ----------------------------------------\n",
         tool);
     fputs("  run time : ", out);
-    elapsed(out, now - st->start);
+    elapsed(out, (time_t)((now - st->start) / 1000));
     fprintf(out, "\n  total ops: %" PRIu64 "\n", total);
     fprintf(out, "  ops/sec  : %.0f (now)  %.0f (avg)\n", cur, avg);
     fprintf(out, "  workers  : %u/%u alive\n", alive, st->nchildren);
-    diskline(&st->disk, out, now);
+    diskline(&st->disk, out, (time_t)(now / 1000));
     fprintf(out, "  deaths   : %" PRIu64, st->deaths);
     if (st->lastdeath >= 0) {
         bstg_status_child_t *c = &st->child[st->lastdeath];
@@ -503,7 +511,7 @@ bstg_status_draw(bstg_status_t *st, FILE *out, const char *const names[],
             fprintf(out, "exit %d", WEXITSTATUS(c->wstatus));
         }
         fprintf(out, " in %s (%ld secs ago)", opname(st, names, c->lastop),
-            (long)(now - st->lastdeath_at));
+            (long)((now - st->lastdeath_at) / 1000));
     }
     fputc('\n', out);
 
@@ -513,14 +521,14 @@ bstg_status_draw(bstg_status_t *st, FILE *out, const char *const names[],
     for (i = 0; i < st->nchildren; i++) {
         bstg_status_child_t *c = &st->child[i];
         int op = LOAD(&c->lastop);
-        time_t at = LOAD(&c->lastop_at);
+        int64_t at = LOAD(&c->lastop_at);
 
         if (c->pid && !c->dead && op >= 0 && at != 0 &&
-                now - at > STALL_SECS) {
+                now - at > STALL_SECS * 1000) {
             /* keep a hung box readable */
             if (nstalled++ < 10) {
                 fprintf(out, "  pid %ld in %s for %ld secs\n", (long)c->pid,
-                    opname(st, names, op), (long)(now - at));
+                    opname(st, names, op), (long)((now - at) / 1000));
             }
         }
     }
@@ -545,14 +553,16 @@ bstg_status_draw(bstg_status_t *st, FILE *out, const char *const names[],
     free(snap);
 
     fclose(mem);
-    fputs("\033[H", real);
+    /* \033[?7l: no autowrap, so a long line is cut at the screen edge
+     * instead of wrapping and leaving fragments behind on the next frame */
+    fputs("\033[H\033[?7l", real);
     for (p = buf; *p != '\0'; p++) {
         if (*p == '\n') {
             fputs("\033[K", real);
         }
         fputc(*p, real);
     }
-    fputs("\033[J", real);
+    fputs("\033[J\033[?7h", real);
     fflush(real);
     free(buf);
 }

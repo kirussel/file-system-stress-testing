@@ -153,14 +153,14 @@ int bstg_flist_import(bstg_flist_t *, char *);
  * writes lastop, lastop_at and its row of opcount; only the parent writes
  * the rest.
  *  lastop: the op the worker most recently started (-1 if none)
- *  lastop_at: when that op was started (CLOCK_MONOTONIC seconds)
+ *  lastop_at: when that op was started (CLOCK_MONOTONIC milliseconds)
  *  dead: set by the parent once the worker has been reaped
  *  wstatus: wait(2) status of a dead worker
  */
 typedef struct bstg_status_child_t {
     pid_t pid;
     int lastop;
-    time_t lastop_at;
+    int64_t lastop_at;
     int dead;
     int wstatus;
 } __attribute__((aligned(BSTG_STATUS_ALIGN))) bstg_status_child_t;
@@ -188,7 +188,7 @@ typedef struct bstg_status_disk_t {
 
 /*
  * Counters shared (MAP_SHARED) between the parent and its workers. Times
- * are CLOCK_MONOTONIC seconds.
+ * are CLOCK_MONOTONIC milliseconds (disk.t and disk.started: seconds).
  *  opcount: [nchildren][stride] ops started, per worker and op; read a
  *      column sum with bstg_status_opcount() (stride >= nfuncs, padded so
  *      that workers do not share cache lines)
@@ -203,14 +203,14 @@ typedef struct bstg_status_t {
     unsigned nfuncs;
     unsigned nchildren;
     unsigned stride;
-    time_t start;
+    int64_t start;
     u_int64_t *opcount;
     bstg_status_child_t *child;
     u_int64_t deaths;
     int lastdeath;
-    time_t lastdeath_at;
+    int64_t lastdeath_at;
     u_int64_t prevtotal;
-    time_t prevtime;
+    int64_t prevtime;
     bstg_status_disk_t disk;
 } __attribute__((aligned(BSTG_STATUS_ALIGN))) bstg_status_t;
 
