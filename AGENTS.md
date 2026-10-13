@@ -10,7 +10,7 @@ work around a missing `ksh` (the `src/funcs` code generators have `#!/bin/
 ksh` shebangs, but run fine under bash):
 
 ```sh
-sudo apt-get install -y libbsd-dev pkg-config
+sudo apt-get install -y libbsd-dev pkg-config check
 contrib/tap.sh
 cd src && gmake KSH=bash
 ```
@@ -24,3 +24,6 @@ On Linux the build uses `contrib/install.sh` as `INSTALL`: it drops BSD
 `chattr +i`, using `sudo` unless run as root. Override with `INSTALL=...`.
 
 To lint the shell scripts with `shellcheck`, run `gmake lint` from `src/`.
+
+Dashboard tests (`src/lib/*_check.c`) use libcheck rather than libtap; the
+`check` package provides it. `gmake check` in `src/lib` builds and runs both.
